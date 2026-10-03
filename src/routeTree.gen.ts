@@ -10,33 +10,54 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RSlugRouteImport } from './routes/r.$slug'
+import { Route as ApiPublicWebhooksAbacatepayRouteImport } from './routes/api/public/webhooks/abacatepay'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RSlugRoute = RSlugRouteImport.update({
+  id: '/r/$slug',
+  path: '/r/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksAbacatepayRoute =
+  ApiPublicWebhooksAbacatepayRouteImport.update({
+    id: '/api/public/webhooks/abacatepay',
+    path: '/api/public/webhooks/abacatepay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/r/$slug': typeof RSlugRoute
+  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/r/$slug': typeof RSlugRoute
+  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/r/$slug': typeof RSlugRoute
+  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/r/$slug' | '/api/public/webhooks/abacatepay'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/r/$slug' | '/api/public/webhooks/abacatepay'
+  id: '__root__' | '/' | '/r/$slug' | '/api/public/webhooks/abacatepay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  RSlugRoute: typeof RSlugRoute
+  ApiPublicWebhooksAbacatepayRoute: typeof ApiPublicWebhooksAbacatepayRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +69,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/r/$slug': {
+      id: '/r/$slug'
+      path: '/r/$slug'
+      fullPath: '/r/$slug'
+      preLoaderRoute: typeof RSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/abacatepay': {
+      id: '/api/public/webhooks/abacatepay'
+      path: '/api/public/webhooks/abacatepay'
+      fullPath: '/api/public/webhooks/abacatepay'
+      preLoaderRoute: typeof ApiPublicWebhooksAbacatepayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  RSlugRoute: RSlugRoute,
+  ApiPublicWebhooksAbacatepayRoute: ApiPublicWebhooksAbacatepayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
