@@ -37,102 +37,33 @@ export const trackEvent = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-const orderSchema = z.object({
-  plan_slug: z.enum(["mensal", "trimestral", "semestral"]),
-  customer_name: z.string().trim().min(2).max(100),
-  customer_email: z.string().trim().email().max(255).optional().or(z.literal("")),
-  customer_phone: z.string().trim().regex(/^\d{10,13}$/, "Telefone inválido"),
-  panel_username: z.string().trim().min(2).max(64).regex(/^\S+$/, "Usuário não pode ter espaços"),
-  ref_code: z.string().trim().max(16).optional().nullable(),
-  session_id: z.string().max(64),
-});
-
 export const createOrder = createServerFn({ method: "POST" })
-  .inputValidator((d) => orderSchema.parse(d))
+  .inputValidator((d) => createPaymentSchemaClient.parse(d))
   .handler(async ({ data }) => {
-    const { createAbacatePix } = await import("./checkout.server");
-    const db = await admin();
-    const { data: plan } = await db.from("plans").select("*").eq("slug", data.plan_slug).eq("active", true).single();
-    if (!plan) throw new Error("Plano inválido");
-
-    let campaign_id: string | null = null;
-    let seller_id: string | null = null;
-    const ref = data.ref_code?.toUpperCase() || null;
-    if (ref) {
-      const { data: click } = await db.from("clicks").select("campaign_id").eq("ref_code", ref).maybeSingle();
-      campaign_id = click?.campaign_id ?? null;
-      if (campaign_id) {
-        const { data: c } = await db.from("campaigns").select("seller_id").eq("id", campaign_id).maybeSingle();
-        seller_id = c?.seller_id ?? null;
-      }
+    const { createPayment, PublicError } = await import("./payments.server");
+    try {
+      return await createPayment(data);
+    } catch (e) {
+      if (e instanceof PublicError) throw new Error(e.message);
+      console.error(e);
+      throw new Error("Erro interno. Tente novamente.");
     }
-
-    const event_id = crypto.randomUUID();
-    const { data: order, error } = await db
-      .from("orders")
-      .insert({
-        ref_code: ref,
-        campaign_id,
-        seller_id,
-        customer_name: data.customer_name,
-        customer_email: data.customer_email || null,
-        customer_phone: data.customer_phone,
-        panel_username: data.panel_username,
-        plan_id: plan.id,
-        amount_cents: plan.price_cents,
-        event_id,
-      })
-      .select("id")
-      .single();
-    if (error || !order) throw new Error("Não foi possível criar o pedido");
-
-    const pix = await createAbacatePix({
-      amountCents: plan.price_cents,
-      description: `NATV ${plan.name}`,
-      name: data.customer_name,
-      phone: data.customer_phone,
-      email: data.customer_email || null,
-      orderId: order.id,
-    });
-
-    await db
-      .from("orders")
-      .update({ abacate_id: pix.id, pix_brcode: pix.brCode, pix_qr_base64: pix.brCodeBase64 })
-      .eq("id", order.id);
-    await db.from("events").insert({
-      session_id: data.session_id,
-      ref_code: ref,
-      order_id: order.id,
-      type: "pix_generated",
-      metadata: { plan: plan.slug, amount_cents: plan.price_cents },
-    });
-
-    return {
-      order_id: order.id,
-      brcode: pix.brCode,
-      qr: pix.brCodeBase64,
-      amount_cents: plan.price_cents,
-      expires_at: new Date(Date.now() + 3600_000).toISOString(),
-    };
   });
 
 export const getOrderStatus = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
-    const db = await admin();
-    const { data: o } = await db
-      .from("orders")
-      .select("status, paid_at, renewed_at, plans(name, months), campaigns(destination_whatsapp)")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (!o) return { status: null, plan_name: null, valid_until: null, whatsapp: null };
-    const base = o.renewed_at ?? o.paid_at;
-    const valid = base ? new Date(base) : null;
-    if (valid) valid.setMonth(valid.getMonth() + (o.plans?.months ?? 1));
-    return {
-      status: o.status,
-      plan_name: o.plans?.name ?? null,
-      valid_until: valid?.toISOString() ?? null,
-      whatsapp: o.campaigns?.destination_whatsapp ?? process.env["SUPPORT_WHATSAPP"] ?? null,
-    };
+    const { getOrderPublicStatus } = await import("./payments.server");
+    return (await getOrderPublicStatus(data.id)) ?? { status: null, plan_name: null, valid_until: null, whatsapp: null };
   });
+
+// Client-safe copy of the payment input schema (payments.server is server-only).
+const createPaymentSchemaClient = z.object({
+  plan_slug: z.enum(["mensal", "trimestral", "semestral"]),
+  panel_username: z.string().trim().min(2).max(64).regex(/^\S+$/),
+  customer_name: z.string().trim().min(2).max(100),
+  customer_email: z.string().trim().email().max(255).optional().or(z.literal("")).nullable(),
+  customer_phone: z.string().transform((v) => v.replace(/\D/g, "")).pipe(z.string().regex(/^\d{10,13}$/)),
+  ref_code: z.string().trim().max(16).optional().nullable(),
+  session_id: z.string().max(64).optional().nullable(),
+});
