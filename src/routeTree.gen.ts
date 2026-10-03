@@ -15,7 +15,9 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PagarRouteImport } from './routes/pagar'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
-import { Route as ApiPublicWebhooksAbacatepayRouteImport } from './routes/api/public/webhooks/abacatepay'
+import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
+import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
+import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -46,12 +48,23 @@ const RSlugRoute = RSlugRouteImport.update({
   path: '/r/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicWebhooksAbacatepayRoute =
-  ApiPublicWebhooksAbacatepayRouteImport.update({
-    id: '/api/public/webhooks/abacatepay',
-    path: '/api/public/webhooks/abacatepay',
+const ApiPublicAbacatepayWebhookRoute =
+  ApiPublicAbacatepayWebhookRouteImport.update({
+    id: '/api/public/abacatepay-webhook',
+    path: '/api/public/abacatepay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCheckOrderStatusRoute =
+  ApiPublicCheckOrderStatusRouteImport.update({
+    id: '/api/public/check-order-status',
+    path: '/api/public/check-order-status',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicCreatePaymentRoute = ApiPublicCreatePaymentRouteImport.update({
+  id: '/api/public/create-payment',
+  path: '/api/public/create-payment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,7 +72,9 @@ export interface FileRoutesByFullPath {
   '/pagar': typeof PagarRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
-  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
+  '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
+  '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,7 +82,9 @@ export interface FileRoutesByTo {
   '/pagar': typeof PagarRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
-  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
+  '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
+  '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,7 +94,9 @@ export interface FileRoutesById {
   '/pagar': typeof PagarRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
-  '/api/public/webhooks/abacatepay': typeof ApiPublicWebhooksAbacatepayRoute
+  '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
+  '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -87,7 +106,9 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/admin'
     | '/r/$slug'
-    | '/api/public/webhooks/abacatepay'
+    | '/api/public/abacatepay-webhook'
+    | '/api/public/check-order-status'
+    | '/api/public/create-payment'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -95,7 +116,9 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/admin'
     | '/r/$slug'
-    | '/api/public/webhooks/abacatepay'
+    | '/api/public/abacatepay-webhook'
+    | '/api/public/check-order-status'
+    | '/api/public/create-payment'
   id:
     | '__root__'
     | '/'
@@ -104,7 +127,9 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/_authenticated/admin'
     | '/r/$slug'
-    | '/api/public/webhooks/abacatepay'
+    | '/api/public/abacatepay-webhook'
+    | '/api/public/check-order-status'
+    | '/api/public/create-payment'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,7 +138,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PagarRoute: typeof PagarRoute
   RSlugRoute: typeof RSlugRoute
-  ApiPublicWebhooksAbacatepayRoute: typeof ApiPublicWebhooksAbacatepayRoute
+  ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
+  ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
+  ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -160,11 +187,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/webhooks/abacatepay': {
-      id: '/api/public/webhooks/abacatepay'
-      path: '/api/public/webhooks/abacatepay'
-      fullPath: '/api/public/webhooks/abacatepay'
-      preLoaderRoute: typeof ApiPublicWebhooksAbacatepayRouteImport
+    '/api/public/abacatepay-webhook': {
+      id: '/api/public/abacatepay-webhook'
+      path: '/api/public/abacatepay-webhook'
+      fullPath: '/api/public/abacatepay-webhook'
+      preLoaderRoute: typeof ApiPublicAbacatepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/check-order-status': {
+      id: '/api/public/check-order-status'
+      path: '/api/public/check-order-status'
+      fullPath: '/api/public/check-order-status'
+      preLoaderRoute: typeof ApiPublicCheckOrderStatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/create-payment': {
+      id: '/api/public/create-payment'
+      path: '/api/public/create-payment'
+      fullPath: '/api/public/create-payment'
+      preLoaderRoute: typeof ApiPublicCreatePaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -187,7 +228,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PagarRoute: PagarRoute,
   RSlugRoute: RSlugRoute,
-  ApiPublicWebhooksAbacatepayRoute: ApiPublicWebhooksAbacatepayRoute,
+  ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
+  ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
+  ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
