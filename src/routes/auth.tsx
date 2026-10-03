@@ -34,12 +34,12 @@ function AuthPage() {
     if (mode === "login") {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       setLoading(false);
-      if (error) return toast.error("E-mail ou senha inválidos");
+      if (error) { toast.error("E-mail ou senha inválidos"); return; }
       navigate({ to: "/admin" });
     } else {
       const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: `${window.location.origin}/admin` } });
       setLoading(false);
-      if (error) return toast.error(error.message);
+      if (error) { toast.error(error.message); return; }
       toast.success("Conta criada. Confirme pelo link enviado ao seu e-mail.");
       setMode("login");
     }

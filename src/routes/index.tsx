@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   beforeLoad: ({ search }) => {
-    throw redirect({ to: "/pagar", search: search as Record<string, string> });
+    throw redirect({ to: "/pagar", search: search as never });
   },
   head: () => ({
     meta: [
