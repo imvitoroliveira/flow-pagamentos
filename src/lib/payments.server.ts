@@ -36,9 +36,13 @@ function buildAbacateBody(p: {
     amount: p.amount,
     expiresIn: PIX_EXPIRES_SECONDS,
     description: p.description.slice(0, 37),
-    // AbacatePay may require taxId when `customer` is sent; we send what we collect.
-    customer: { name: p.name, cellphone: p.phone, email: p.email ?? undefined },
-    metadata: { order_id: p.orderId, panel_username: p.username, plan_slug: p.slug },
+    // AbacatePay requires customer.taxId (CPF) whenever `customer` is sent. We don't collect CPF,
+    // so customer data travels in metadata. To send `customer`, collect CPF and add:
+    // customer: { name, cellphone, email, taxId }
+    metadata: {
+      order_id: p.orderId, panel_username: p.username, plan_slug: p.slug,
+      customer_name: p.name, customer_phone: p.phone, customer_email: p.email ?? "",
+    },
   };
 }
 
