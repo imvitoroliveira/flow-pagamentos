@@ -8,7 +8,7 @@ import { z } from "zod";
 //   v2: POST {BASE}/v2/transparents/create body: { method: "PIX", data: { ...same fields } }
 // Switch by changing ABACATE_API_VERSION. The current key is a v2 key.
 export const ABACATE_API_BASE = "https://api.abacatepay.com";
-export const ABACATE_API_VERSION: "v1" | "v2" = "v2";
+export const ABACATE_API_VERSION: "v1" | "v2" = "v1";
 export const ABACATE_API_PATH = ABACATE_API_VERSION === "v1" ? "/v1/pixQrCode/create" : "/v2/transparents/create";
 export const PIX_EXPIRES_SECONDS = 30 * 60;
 
@@ -104,7 +104,7 @@ export async function createPayment(input: CreatePaymentInput) {
   const json = await res.json().catch(() => null);
   const pix = res.ok ? parseAbacateResponse(json) : null;
   if (!pix) {
-    console.error("AbacatePay create failed", res.status, json);
+    console.error("AbacatePay create failed", ABACATE_API_PATH, res.status, json);
     await sb.from("orders").update({ status: "cancelled" }).eq("id", order.id);
     throw new PublicError("Não foi possível gerar o PIX. Tente novamente.");
   }
