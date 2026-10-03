@@ -3,11 +3,13 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
-// v1 (current): POST {BASE}/v1/pixQrCode/create
-// To switch to v2: set ABACATE_API_PATH = "/v2/transparents/create" and adjust
-// buildAbacateBody()/parseAbacateResponse() to the v2 payload shape.
+// The API key version must match the endpoint ("API key version mismatch" otherwise).
+//   v1: POST {BASE}/v1/pixQrCode/create   body: { amount, expiresIn, description, metadata }
+//   v2: POST {BASE}/v2/transparents/create body: { method: "PIX", data: { ...same fields } }
+// Switch by changing ABACATE_API_VERSION. The current key is a v2 key.
 export const ABACATE_API_BASE = "https://api.abacatepay.com";
-export const ABACATE_API_PATH = "/v1/pixQrCode/create";
+export const ABACATE_API_VERSION: "v1" | "v2" = "v2";
+export const ABACATE_API_PATH = ABACATE_API_VERSION === "v1" ? "/v1/pixQrCode/create" : "/v2/transparents/create";
 export const PIX_EXPIRES_SECONDS = 30 * 60;
 
 async function db() {
@@ -32,7 +34,7 @@ function buildAbacateBody(p: {
   amount: number; description: string; name: string; phone: string; email: string | null;
   orderId: string; username: string; slug: string;
 }) {
-  return {
+  const data = {
     amount: p.amount,
     expiresIn: PIX_EXPIRES_SECONDS,
     description: p.description.slice(0, 37),
@@ -44,6 +46,7 @@ function buildAbacateBody(p: {
       customer_name: p.name, customer_phone: p.phone, customer_email: p.email ?? "",
     },
   };
+  return ABACATE_API_VERSION === "v1" ? data : { method: "PIX", data };
 }
 
 function parseAbacateResponse(json: unknown) {
