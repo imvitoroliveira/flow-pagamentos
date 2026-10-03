@@ -38,11 +38,11 @@ export const trackEvent = createServerFn({ method: "POST" })
   });
 
 const orderSchema = z.object({
-  plan_id: z.string().uuid(),
+  plan_slug: z.enum(["mensal", "trimestral", "semestral"]),
   customer_name: z.string().trim().min(2).max(100),
   customer_email: z.string().trim().email().max(255).optional().or(z.literal("")),
   customer_phone: z.string().trim().regex(/^\d{10,13}$/, "Telefone inválido"),
-  panel_username: z.string().trim().min(2).max(64),
+  panel_username: z.string().trim().min(2).max(64).regex(/^\S+$/, "Usuário não pode ter espaços"),
   ref_code: z.string().trim().max(16).optional().nullable(),
   session_id: z.string().max(64),
 });
@@ -52,7 +52,7 @@ export const createOrder = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { createAbacatePix } = await import("./checkout.server");
     const db = await admin();
-    const { data: plan } = await db.from("plans").select("*").eq("id", data.plan_id).eq("active", true).single();
+    const { data: plan } = await db.from("plans").select("*").eq("slug", data.plan_slug).eq("active", true).single();
     if (!plan) throw new Error("Plano inválido");
 
     let campaign_id: string | null = null;
@@ -107,13 +107,32 @@ export const createOrder = createServerFn({ method: "POST" })
       metadata: { plan: plan.slug, amount_cents: plan.price_cents },
     });
 
-    return { order_id: order.id, brcode: pix.brCode, qr: pix.brCodeBase64, amount_cents: plan.price_cents };
+    return {
+      order_id: order.id,
+      brcode: pix.brCode,
+      qr: pix.brCodeBase64,
+      amount_cents: plan.price_cents,
+      expires_at: new Date(Date.now() + 3600_000).toISOString(),
+    };
   });
 
 export const getOrderStatus = createServerFn({ method: "GET" })
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data }) => {
     const db = await admin();
-    const { data: o } = await db.from("orders").select("status").eq("id", data.id).maybeSingle();
-    return { status: o?.status ?? null };
+    const { data: o } = await db
+      .from("orders")
+      .select("status, paid_at, renewed_at, plans(name, months), campaigns(destination_whatsapp)")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!o) return { status: null, plan_name: null, valid_until: null, whatsapp: null };
+    const base = o.renewed_at ?? o.paid_at;
+    const valid = base ? new Date(base) : null;
+    if (valid) valid.setMonth(valid.getMonth() + (o.plans?.months ?? 1));
+    return {
+      status: o.status,
+      plan_name: o.plans?.name ?? null,
+      valid_until: valid?.toISOString() ?? null,
+      whatsapp: o.campaigns?.destination_whatsapp ?? process.env["SUPPORT_WHATSAPP"] ?? null,
+    };
   });
