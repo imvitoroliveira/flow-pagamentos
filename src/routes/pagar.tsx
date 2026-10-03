@@ -242,7 +242,7 @@ function BackBtn({ onClick }: { onClick: () => void }) {
 }
 
 function Field(props: {
-  label: string; value: string; onChange: (v: string) => void; error?: string;
+  label: string; value: string; onChange: (v: string) => void; error?: string | undefined;
   type?: string; placeholder?: string; inputMode?: "tel"; autoComplete?: string;
 }) {
   const id = props.label.replace(/\W/g, "");
