@@ -104,7 +104,7 @@ function Orders() {
   async function setStatus(id: string, status: "renewed" | "cancelled") {
     const patch = status === "renewed" ? { status, renewed_at: new Date().toISOString(), renewal_error: null } : { status };
     const { error } = await supabase.from("orders").update(patch).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     qc.invalidateQueries({ queryKey: ["orders"] });
   }
   return (
@@ -154,7 +154,7 @@ function Sellers() {
   async function add(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await supabase.from("sellers").insert({ name, telegram_chat_id: chat || null });
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     setName(""); setChat("");
     qc.invalidateQueries({ queryKey: ["sellers"] });
   }
@@ -193,7 +193,7 @@ function Campaigns() {
     e.preventDefault();
     const row = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === "" ? null : v])) as typeof f;
     const { error } = await supabase.from("campaigns").insert({ ...row, name: f.name, slug: f.slug.toLowerCase() });
-    if (error) return toast.error(error.code === "23505" ? "Slug já existe" : error.message);
+    if (error) { toast.error(error.code === "23505" ? "Slug já existe" : error.message); return; }
     setF(emptyCampaign);
     qc.invalidateQueries({ queryKey: ["campaigns"] });
   }
