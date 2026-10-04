@@ -53,7 +53,7 @@ async function activate(username: string, months: number) {
  * Renews a paid order. Idempotent: only acts on status "paid" (or "renewal_failed" when retrying).
  * On failure schedules the next retry (1/5/15 min) or alerts the admin when exhausted.
  */
-export async function renewCustomer(orderId: string, opts: { attempt?: number; allowFailed?: boolean } = {}) {
+export async function renewCustomer(orderId: string, opts: { attempt?: number; allowFailed?: boolean; manual?: boolean } = {}) {
   const sb = await db();
   const attempt = opts.attempt ?? 0;
   const { data: o } = await sb.from("orders").select("id, status, panel_username, plans(slug, months)").eq("id", orderId).maybeSingle();
@@ -79,7 +79,9 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
     console.error("[renew-customer]", orderId, attempt, msg);
     await sb.from("orders").update({ status: "renewal_failed", renewal_error: msg }).eq("id", orderId);
     const next = attempt + 1;
-    if (next <= RETRY_DELAYS_MIN.length) {
+    if (opts.manual) {
+      // manual retry from /admin: no automatic follow-ups
+    } else if (next <= RETRY_DELAYS_MIN.length) {
       const run_at = new Date(Date.now() + RETRY_DELAYS_MIN[next - 1] * 60_000).toISOString();
       await sb.from("renewal_retries").upsert({ order_id: orderId, attempt: next, run_at, status: "pending" }, { onConflict: "order_id,attempt" });
       await sb.rpc("arm_renewal_retries");

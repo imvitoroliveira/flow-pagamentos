@@ -63,6 +63,14 @@ export async function createPayment(input: CreatePaymentInput) {
   const { data: plan } = await sb.from("plans").select("*").eq("slug", input.plan_slug).eq("active", true).maybeSingle();
   if (!plan) throw new PublicError("Plano inválido");
 
+  try {
+    const { findPanelUser } = await import("./renewal.server");
+    if (!(await findPanelUser(input.panel_username))) throw new PublicError("Usuário do aplicativo não encontrado. Confira e tente novamente.");
+  } catch (e) {
+    if (e instanceof PublicError) throw e;
+    console.error("panel lookup failed", e); // panel down: don't block the sale
+  }
+
   const ref = input.ref_code?.toUpperCase() || null;
   let campaign_id: string | null = null;
   let seller_id: string | null = null;
@@ -165,7 +173,8 @@ export function verifyAbacateWebhook(url: URL, rawBody: string, signature: strin
 
 // ─── Post-payment steps (stubs; implemented in later steps) ───────────────
 export async function renewCustomer(orderId: string) {
-  console.log("[renew-customer] stub", orderId);
+  const { renewCustomer: run } = await import("./renewal.server");
+  return run(orderId);
 }
 export async function notifySeller(orderId: string) {
   console.log("[notify-seller] stub", orderId);
