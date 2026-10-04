@@ -2,7 +2,9 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { LogOut } from "lucide-react";
+import { Loader2, LogOut, RefreshCw } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { retryRenewal } from "@/lib/renewal.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +103,16 @@ function Orders() {
     },
   });
   const paid = data.filter((o) => ["paid", "renewed", "renewal_failed"].includes(o.status));
+  const retryFn = useServerFn(retryRenewal);
+  const [retrying, setRetrying] = useState<string | null>(null);
+  async function retry(id: string) {
+    setRetrying(id);
+    try {
+      const r = await retryFn({ data: { order_id: id } });
+      if (r.ok) toast.success("Renovado com sucesso"); else toast.error(r.error ?? "Falha na renovação");
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setRetrying(null); qc.invalidateQueries({ queryKey: ["orders"] }); }
+  }
   async function setStatus(id: string, status: "renewed" | "cancelled") {
     const patch = status === "renewed" ? { status, renewed_at: new Date().toISOString(), renewal_error: null } : { status };
     const { error } = await supabase.from("orders").update(patch).eq("id", id);
@@ -128,7 +140,12 @@ function Orders() {
             </div>
             <div className="flex items-center gap-2">
               <Badge variant={o.status === "renewed" ? "default" : o.status === "renewal_failed" ? "destructive" : "secondary"}>{statusLabel[o.status]}</Badge>
-              {(o.status === "paid" || o.status === "renewal_failed") && <Button size="sm" onClick={() => setStatus(o.id, "renewed")}>Marcar renovado</Button>}
+              {o.status === "renewal_failed" && (
+                <Button size="sm" disabled={retrying === o.id} onClick={() => retry(o.id)}>
+                  {retrying === o.id ? <Loader2 className="animate-spin" /> : <RefreshCw />} Tentar renovar novamente
+                </Button>
+              )}
+              {(o.status === "paid" || o.status === "renewal_failed") && <Button size="sm" variant="ghost" onClick={() => setStatus(o.id, "renewed")}>Marcar renovado</Button>}
               {o.status === "pending" && <Button size="sm" variant="ghost" onClick={() => setStatus(o.id, "cancelled")}>Cancelar</Button>}
             </div>
           </div>

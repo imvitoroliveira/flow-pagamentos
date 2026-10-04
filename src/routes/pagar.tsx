@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createOrder, getOrderStatus, getPlans, trackEvent } from "@/lib/checkout.functions";
+import { validateUsername } from "@/lib/renewal.functions";
 import { cn } from "@/lib/utils";
 
 const plansQuery = queryOptions({ queryKey: ["plans"], queryFn: () => getPlans() });
@@ -74,6 +75,7 @@ function PagarPage() {
   const startedRef = useRef(false);
   const track = useServerFn(trackEvent);
   const create = useServerFn(createOrder);
+  const validate = useServerFn(validateUsername);
 
   const mensal = plans.find((p) => p.slug === "mensal");
   const plan = plans.find((p) => p.slug === slug) ?? plans[0];
@@ -105,6 +107,11 @@ function PagarPage() {
     setErrors({});
     setLoading(true);
     try {
+      const v = await validate({ data: { username: parsed.data.user } });
+      if (!v.exists) {
+        setErrors({ user: "Usuário não encontrado. Confira o usuário do aplicativo." });
+        return;
+      }
       const r = await create({
         data: {
           plan_slug: slug,

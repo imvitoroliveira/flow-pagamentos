@@ -308,6 +308,44 @@ export type Database = {
         }
         Relationships: []
       }
+      renewal_retries: {
+        Row: {
+          attempt: number
+          created_at: string
+          id: string
+          last_error: string | null
+          order_id: string
+          run_at: string
+          status: string
+        }
+        Insert: {
+          attempt: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id: string
+          run_at: string
+          status?: string
+        }
+        Update: {
+          attempt?: number
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          order_id?: string
+          run_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renewal_retries_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sellers: {
         Row: {
           active: boolean
@@ -382,6 +420,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      arm_renewal_retries: { Args: never; Returns: undefined }
+      disarm_renewal_retries: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
