@@ -18,6 +18,7 @@ import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
+import { Route as ApiPublicRenewalRetriesRouteImport } from './routes/api/public/renewal-retries'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -65,6 +66,11 @@ const ApiPublicCreatePaymentRoute = ApiPublicCreatePaymentRouteImport.update({
   path: '/api/public/create-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicRenewalRetriesRoute = ApiPublicRenewalRetriesRouteImport.update({
+  id: '/api/public/renewal-retries',
+  path: '/api/public/renewal-retries',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -85,6 +92,7 @@ export interface FileRoutesByTo {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -97,6 +105,7 @@ export interface FileRoutesById {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -109,6 +118,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/renewal-retries'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/renewal-retries'
   id:
     | '__root__'
     | '/'
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/renewal-retries'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
   ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
+  ApiPublicRenewalRetriesRoute: typeof ApiPublicRenewalRetriesRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatePaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/renewal-retries': {
+      id: '/api/public/renewal-retries'
+      path: '/api/public/renewal-retries'
+      fullPath: '/api/public/renewal-retries'
+      preLoaderRoute: typeof ApiPublicRenewalRetriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -231,6 +251,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
   ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
+  ApiPublicRenewalRetriesRoute: ApiPublicRenewalRetriesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

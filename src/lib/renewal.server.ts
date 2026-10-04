@@ -82,7 +82,7 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
     if (opts.manual) {
       // manual retry from /admin: no automatic follow-ups
     } else if (next <= RETRY_DELAYS_MIN.length) {
-      const run_at = new Date(Date.now() + RETRY_DELAYS_MIN[next - 1] * 60_000).toISOString();
+      const run_at = new Date(Date.now() + (RETRY_DELAYS_MIN[next - 1] ?? 15) * 60_000).toISOString();
       await sb.from("renewal_retries").upsert({ order_id: orderId, attempt: next, run_at, status: "pending" }, { onConflict: "order_id,attempt" });
       await sb.rpc("arm_renewal_retries");
     } else {
