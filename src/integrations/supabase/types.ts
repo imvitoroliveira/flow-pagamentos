@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_audit_log: {
+        Row: {
+          action: string
+          admin_email: string | null
+          admin_user_id: string | null
+          created_at: string
+          details: Json
+          entity: string | null
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          admin_email?: string | null
+          admin_user_id?: string | null
+          created_at?: string
+          details?: Json
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       campaigns: {
         Row: {
           created_at: string
@@ -83,6 +116,7 @@ export type Database = {
           id: string
           ip_hash: string | null
           ref_code: string
+          source: string
           state: string | null
           ttclid: string | null
           user_agent: string | null
@@ -96,6 +130,7 @@ export type Database = {
           id?: string
           ip_hash?: string | null
           ref_code: string
+          source?: string
           state?: string | null
           ttclid?: string | null
           user_agent?: string | null
@@ -109,6 +144,7 @@ export type Database = {
           id?: string
           ip_hash?: string | null
           ref_code?: string
+          source?: string
           state?: string | null
           ttclid?: string | null
           user_agent?: string | null
@@ -420,6 +456,129 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      _adm_clicks: {
+        Args: {
+          p_campaign: string
+          p_from: string
+          p_seller: string
+          p_to: string
+        }
+        Returns: {
+          campaign_id: string | null
+          created_at: string
+          fbc: string | null
+          fbclid: string | null
+          fbp: string | null
+          id: string
+          ip_hash: string | null
+          ref_code: string
+          source: string
+          state: string | null
+          ttclid: string | null
+          user_agent: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "clicks"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _adm_events: {
+        Args: {
+          p_campaign: string
+          p_from: string
+          p_seller: string
+          p_to: string
+        }
+        Returns: {
+          created_at: string
+          id: string
+          metadata: Json
+          order_id: string | null
+          ref_code: string | null
+          session_id: string | null
+          type: Database["public"]["Enums"]["event_type"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      _adm_orders: {
+        Args: { p_campaign: string; p_seller: string }
+        Returns: {
+          abacate_id: string | null
+          amount_cents: number
+          campaign_id: string | null
+          created_at: string
+          customer_email: string | null
+          customer_name: string
+          customer_phone: string
+          event_id: string | null
+          id: string
+          paid_at: string | null
+          panel_username: string
+          pix_brcode: string | null
+          pix_qr_base64: string | null
+          plan_id: string
+          ref_code: string | null
+          renewal_error: string | null
+          renewed_at: string | null
+          seller_id: string | null
+          status: Database["public"]["Enums"]["order_status"]
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "orders"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      admin_breakdown: {
+        Args: {
+          p_campaign?: string
+          p_dim?: string
+          p_from: string
+          p_seller?: string
+          p_to: string
+        }
+        Returns: {
+          clicks: number
+          key: string
+          label: string
+          paid: number
+          pix: number
+          revenue_cents: number
+        }[]
+      }
+      admin_overview: {
+        Args: {
+          p_campaign?: string
+          p_from: string
+          p_seller?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_timeseries: {
+        Args: {
+          p_bucket?: string
+          p_campaign?: string
+          p_from: string
+          p_seller?: string
+          p_to: string
+        }
+        Returns: {
+          bucket: string
+          clicks: number
+          paid: number
+          pix: number
+          revenue_cents: number
+        }[]
+      }
       arm_renewal_retries: { Args: never; Returns: undefined }
       disarm_renewal_retries: { Args: never; Returns: undefined }
       has_role: {

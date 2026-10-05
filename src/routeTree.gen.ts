@@ -13,8 +13,16 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PagarRouteImport } from './routes/pagar'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
+import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
+import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
+import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
+import { Route as AuthenticatedAdminFunilRouteImport } from './routes/_authenticated/admin.funil'
+import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
+import { Route as AuthenticatedAdminPedidosRouteImport } from './routes/_authenticated/admin.pedidos'
+import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_authenticated/admin.vendedores'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
@@ -39,6 +47,11 @@ const PagarRoute = PagarRouteImport.update({
   path: '/pagar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -49,6 +62,46 @@ const RSlugRoute = RSlugRouteImport.update({
   path: '/r/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminCampanhasRoute =
+  AuthenticatedAdminCampanhasRouteImport.update({
+    id: '/campanhas',
+    path: '/campanhas',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminClientesRoute =
+  AuthenticatedAdminClientesRouteImport.update({
+    id: '/clientes',
+    path: '/clientes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminConfiguracoesRoute =
+  AuthenticatedAdminConfiguracoesRouteImport.update({
+    id: '/configuracoes',
+    path: '/configuracoes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminFunilRoute = AuthenticatedAdminFunilRouteImport.update({
+  id: '/funil',
+  path: '/funil',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminPedidosRoute =
+  AuthenticatedAdminPedidosRouteImport.update({
+    id: '/pedidos',
+    path: '/pedidos',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminVendedoresRoute =
+  AuthenticatedAdminVendedoresRouteImport.update({
+    id: '/vendedores',
+    path: '/vendedores',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const ApiPublicAbacatepayWebhookRoute =
   ApiPublicAbacatepayWebhookRouteImport.update({
     id: '/api/public/abacatepay-webhook',
@@ -76,8 +129,16 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/r/$slug': typeof RSlugRoute
+  '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
+  '/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
+  '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
@@ -87,8 +148,16 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/r/$slug': typeof RSlugRoute
+  '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
+  '/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
+  '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
@@ -100,8 +169,16 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/r/$slug': typeof RSlugRoute
+  '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
+  '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
+  '/_authenticated/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/_authenticated/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
+  '/_authenticated/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
@@ -113,8 +190,16 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/admin'
     | '/r/$slug'
+    | '/admin/campanhas'
+    | '/admin/clientes'
+    | '/admin/configuracoes'
+    | '/admin/funil'
+    | '/admin/logs'
+    | '/admin/pedidos'
+    | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
@@ -124,8 +209,16 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/admin'
     | '/r/$slug'
+    | '/admin/campanhas'
+    | '/admin/clientes'
+    | '/admin/configuracoes'
+    | '/admin/funil'
+    | '/admin/logs'
+    | '/admin/pedidos'
+    | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
@@ -136,8 +229,16 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/_authenticated/admin'
     | '/r/$slug'
+    | '/_authenticated/admin/campanhas'
+    | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/configuracoes'
+    | '/_authenticated/admin/funil'
+    | '/_authenticated/admin/logs'
+    | '/_authenticated/admin/pedidos'
+    | '/_authenticated/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
@@ -149,6 +250,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PagarRoute: typeof PagarRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RSlugRoute: typeof RSlugRoute
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
@@ -186,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -199,6 +308,55 @@ declare module '@tanstack/react-router' {
       fullPath: '/r/$slug'
       preLoaderRoute: typeof RSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/campanhas': {
+      id: '/_authenticated/admin/campanhas'
+      path: '/campanhas'
+      fullPath: '/admin/campanhas'
+      preLoaderRoute: typeof AuthenticatedAdminCampanhasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/clientes': {
+      id: '/_authenticated/admin/clientes'
+      path: '/clientes'
+      fullPath: '/admin/clientes'
+      preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/configuracoes': {
+      id: '/_authenticated/admin/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/admin/configuracoes'
+      preLoaderRoute: typeof AuthenticatedAdminConfiguracoesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/funil': {
+      id: '/_authenticated/admin/funil'
+      path: '/funil'
+      fullPath: '/admin/funil'
+      preLoaderRoute: typeof AuthenticatedAdminFunilRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/logs': {
+      id: '/_authenticated/admin/logs'
+      path: '/logs'
+      fullPath: '/admin/logs'
+      preLoaderRoute: typeof AuthenticatedAdminLogsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/pedidos': {
+      id: '/_authenticated/admin/pedidos'
+      path: '/pedidos'
+      fullPath: '/admin/pedidos'
+      preLoaderRoute: typeof AuthenticatedAdminPedidosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/vendedores': {
+      id: '/_authenticated/admin/vendedores'
+      path: '/vendedores'
+      fullPath: '/admin/vendedores'
+      preLoaderRoute: typeof AuthenticatedAdminVendedoresRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/api/public/abacatepay-webhook': {
       id: '/api/public/abacatepay-webhook'
@@ -231,12 +389,35 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
+  AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
+  AuthenticatedAdminFunilRoute: typeof AuthenticatedAdminFunilRoute
+  AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
+  AuthenticatedAdminPedidosRoute: typeof AuthenticatedAdminPedidosRoute
+  AuthenticatedAdminVendedoresRoute: typeof AuthenticatedAdminVendedoresRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
+  AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
+  AuthenticatedAdminFunilRoute: AuthenticatedAdminFunilRoute,
+  AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
+  AuthenticatedAdminPedidosRoute: AuthenticatedAdminPedidosRoute,
+  AuthenticatedAdminVendedoresRoute: AuthenticatedAdminVendedoresRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -247,6 +428,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PagarRoute: PagarRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RSlugRoute: RSlugRoute,
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
