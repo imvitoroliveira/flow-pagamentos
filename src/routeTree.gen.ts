@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PagarRouteImport } from './routes/pagar'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
@@ -37,6 +38,11 @@ const AuthRoute = AuthRouteImport.update({
 const PagarRoute = PagarRouteImport.update({
   id: '/pagar',
   path: '/pagar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -76,6 +82,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/r/$slug': typeof RSlugRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/admin'
     | '/r/$slug'
     | '/api/public/abacatepay-webhook'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/admin'
     | '/r/$slug'
     | '/api/public/abacatepay-webhook'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/pagar'
+    | '/reset-password'
     | '/_authenticated/admin'
     | '/r/$slug'
     | '/api/public/abacatepay-webhook'
@@ -149,6 +161,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PagarRoute: typeof PagarRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   RSlugRoute: typeof RSlugRoute
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       path: '/pagar'
       fullPath: '/pagar'
       preLoaderRoute: typeof PagarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -247,6 +267,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PagarRoute: PagarRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   RSlugRoute: RSlugRoute,
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
