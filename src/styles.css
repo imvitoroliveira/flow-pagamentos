@@ -114,3 +114,9 @@
 @utility shadow-glow {
   box-shadow: var(--shadow-glow);
 }
+
+@utility glass {
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+  backdrop-filter: blur(12px);
+  border-color: color-mix(in oklab, var(--foreground) 9%, transparent);
+}
