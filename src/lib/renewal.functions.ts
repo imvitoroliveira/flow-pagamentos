@@ -21,9 +21,10 @@ export const retryRenewal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ order_id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" });
-    if (!isAdmin) throw new Error("Sem permissão");
+    const { assertAdmin, logAdminAction } = await import("./admin.server");
+    await assertAdmin(context as never);
     const { renewCustomer } = await import("./renewal.server");
     const r = await renewCustomer(data.order_id, { allowFailed: true, manual: true });
+    await logAdminAction(context as never, { action: "retry_renewal", entity: "order", entity_id: data.order_id, details: { ok: !!r.ok, error: "error" in r ? r.error : null } });
     return { ok: !!r.ok, error: "error" in r ? (r.error ?? null) : null };
   });

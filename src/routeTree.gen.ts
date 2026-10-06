@@ -16,6 +16,7 @@ import { Route as PagarRouteImport } from './routes/pagar'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
@@ -61,6 +62,11 @@ const RSlugRoute = RSlugRouteImport.update({
   id: '/r/$slug',
   path: '/r/$slug',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminCampanhasRoute =
   AuthenticatedAdminCampanhasRouteImport.update({
@@ -143,13 +149,13 @@ export interface FileRoutesByFullPath {
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -162,6 +168,7 @@ export interface FileRoutesByTo {
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -183,6 +190,7 @@ export interface FileRoutesById {
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -204,13 +212,13 @@ export interface FileRouteTypes {
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/renewal-retries'
+    | '/admin/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/pagar'
     | '/reset-password'
-    | '/admin'
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -223,6 +231,7 @@ export interface FileRouteTypes {
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/renewal-retries'
+    | '/admin'
   id:
     | '__root__'
     | '/'
@@ -243,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/renewal-retries'
+    | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -308,6 +318,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/r/$slug'
       preLoaderRoute: typeof RSlugRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/campanhas': {
       id: '/_authenticated/admin/campanhas'
@@ -397,6 +414,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedAdminPedidosRoute: typeof AuthenticatedAdminPedidosRoute
   AuthenticatedAdminVendedoresRoute: typeof AuthenticatedAdminVendedoresRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -407,6 +425,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
   AuthenticatedAdminPedidosRoute: AuthenticatedAdminPedidosRoute,
   AuthenticatedAdminVendedoresRoute: AuthenticatedAdminVendedoresRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
