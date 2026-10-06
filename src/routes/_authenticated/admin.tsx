@@ -86,7 +86,7 @@ function AdminLayout() {
                 {NAV.map((n) => (
                   <SidebarMenuItem key={n.to}>
                     <SidebarMenuButton asChild tooltip={n.label} className="h-11">
-                      <Link to={n.to} search={(s: AdminSearch) => s} activeOptions={{ exact: "exact" in n, includeSearch: false }}
+                      <Link to={n.to} search={(s: Partial<AdminSearch>) => s as never} activeOptions={{ exact: "exact" in n, includeSearch: false }}
                         activeProps={{ "data-active": true } as never}>
                         <n.icon aria-hidden /> <span>{n.label}</span>
                       </Link>

@@ -166,7 +166,7 @@ function Alerts() {
 }
 
 // ─── KPIs ─────────────────────────────────────────────────────────────────
-function Delta({ cur, prev, invert }: { cur: number | null; prev: number | null; invert?: boolean }) {
+function Delta({ cur, prev, invert }: { cur: number | null; prev: number | null; invert?: boolean | undefined }) {
   if (cur == null || prev == null || prev === 0) return <span className="text-xs text-muted-foreground">— vs. anterior</span>;
   const d = ((cur - prev) / Math.abs(prev)) * 100;
   if (Math.abs(d) < 0.05) return <span className="flex items-center gap-1 text-xs text-muted-foreground"><Minus className="size-3" aria-hidden /> 0,0%</span>;
@@ -179,7 +179,7 @@ function Delta({ cur, prev, invert }: { cur: number | null; prev: number | null;
   );
 }
 
-function Spark({ data, k }: { data?: Series; k: "clicks" | "pix" | "paid" | "revenue_cents" }) {
+function Spark({ data, k }: { data: Series | undefined; k: "clicks" | "pix" | "paid" | "revenue_cents" }) {
   if (!data?.length) return <div className="h-8" />;
   return (
     <div className="h-8" aria-hidden>
@@ -190,7 +190,7 @@ function Spark({ data, k }: { data?: Series; k: "clicks" | "pix" | "paid" | "rev
   );
 }
 
-function Kpis({ cur, prev, series }: { cur: ReturnType<typeof useRpc<Overview>>; prev?: Overview; series?: Series }) {
+function Kpis({ cur, prev, series }: { cur: ReturnType<typeof useRpc<Overview>>; prev: Overview | undefined; series: Series | undefined }) {
   if (cur.isError) return <Card><ErrorState onRetry={() => cur.refetch()} /></Card>;
   if (!cur.data) return <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>;
   const c = cur.data, p = prev;
@@ -230,7 +230,7 @@ function FunnelBlock({ q }: { q: ReturnType<typeof useRpc<Overview>> }) {
           ["Cliques", d.clicks], ["Abriram a página de pagamento", d.page_sessions], ["Iniciaram checkout", d.checkout_sessions],
           ["PIX gerado", d.pix_generated], ["Pago", d.paid_count], ["Renovado", d.renewed_count],
         ] as const;
-        const first = steps[0][1];
+        const first = d.clicks;
         const max = Math.max(...steps.map((s) => s[1]), 1);
         return (
           <>
@@ -241,7 +241,7 @@ function FunnelBlock({ q }: { q: ReturnType<typeof useRpc<Overview>> }) {
                     <span>{label}</span>
                     <span className="text-muted-foreground">
                       <b className="text-foreground">{num(n)}</b>
-                      {i > 0 && <> · {pct(ratio(n, steps[i - 1][1]))} do anterior · {pct(ratio(n, first))} do total</>}
+                      {i > 0 && <> · {pct(ratio(n, steps[i - 1]?.[1] ?? 0))} do anterior · {pct(ratio(n, first))} do total</>}
                     </span>
                   </div>
                   <div className="h-3 overflow-hidden rounded-full bg-muted">
