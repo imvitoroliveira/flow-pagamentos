@@ -49,6 +49,7 @@ export type Database = {
       }
       campaigns: {
         Row: {
+          active: boolean
           created_at: string
           destination_whatsapp: string | null
           id: string
@@ -65,6 +66,7 @@ export type Database = {
           utm_term: string | null
         }
         Insert: {
+          active?: boolean
           created_at?: string
           destination_whatsapp?: string | null
           id?: string
@@ -81,6 +83,7 @@ export type Database = {
           utm_term?: string | null
         }
         Update: {
+          active?: boolean
           created_at?: string
           destination_whatsapp?: string | null
           id?: string
@@ -388,18 +391,21 @@ export type Database = {
           id: string
           name: string
           telegram_chat_id: string | null
+          telegram_tested_at: string | null
         }
         Insert: {
           active?: boolean
           id?: string
           name: string
           telegram_chat_id?: string | null
+          telegram_tested_at?: string | null
         }
         Update: {
           active?: boolean
           id?: string
           name?: string
           telegram_chat_id?: string | null
+          telegram_tested_at?: string | null
         }
         Relationships: []
       }
@@ -554,11 +560,33 @@ export type Database = {
           revenue_cents: number
         }[]
       }
+      admin_list_admins: {
+        Args: never
+        Returns: {
+          created_at: string
+          email: string
+          last_sign_in_at: string
+          user_id: string
+        }[]
+      }
       admin_overview: {
         Args: {
           p_campaign?: string
           p_from: string
           p_seller?: string
+          p_to: string
+        }
+        Returns: Json
+      }
+      admin_sessions: {
+        Args: {
+          p_campaign?: string
+          p_from: string
+          p_limit?: number
+          p_offset?: number
+          p_search?: string
+          p_seller?: string
+          p_stage?: string
           p_to: string
         }
         Returns: Json

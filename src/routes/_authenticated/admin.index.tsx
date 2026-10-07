@@ -29,24 +29,24 @@ export const Route = createFileRoute("/_authenticated/admin/")({
 });
 
 // ─── formatting (cents in, display only) ──────────────────────────────────
-const brl = (c: number | null | undefined) => (c == null ? "—" : (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
-const num = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("pt-BR"));
-const pct = (n: number | null | undefined) => (n == null || !isFinite(n) ? "—" : `${n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
-const ratio = (a: number, b: number) => (b ? (100 * a) / b : null);
-const SP_TZ = "America/Sao_Paulo";
-const dtSP = (s: string) => new Date(s).toLocaleString("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+export const brl = (c: number | null | undefined) => (c == null ? "—" : (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
+export const num = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("pt-BR"));
+export const pct = (n: number | null | undefined) => (n == null || !isFinite(n) ? "—" : `${n.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`);
+export const ratio = (a: number, b: number) => (b ? (100 * a) / b : null);
+export const SP_TZ = "America/Sao_Paulo";
+export const dtSP = (s: string) => new Date(s).toLocaleString("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const dur = (s: number | null | undefined) => (s == null ? "—" : s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
-const STATUS: Record<string, string> = { pending: "Pendente", paid: "Pago", renewed: "Renovado", renewal_failed: "Falha renovação", expired: "Expirado", cancelled: "Cancelado" };
+export const STATUS: Record<string, string> = { pending: "Pendente", paid: "Pago", renewed: "Renovado", renewal_failed: "Falha renovação", expired: "Expirado", cancelled: "Cancelado" };
 
-type Overview = {
+export type Overview = {
   clicks: number; page_sessions: number; checkout_sessions: number; pix_generated: number; paid_count: number;
   renewed_count: number; renewal_failed_count: number; revenue_cents: number; avg_ticket_cents: number | null;
   abandoned_count: number; abandoned_cents: number; renewal_success_rate: number | null; renewal_avg_seconds: number | null;
 };
-type Series = { bucket: string; clicks: number; pix: number; paid: number; revenue_cents: number }[];
-type Breakdown = { key: string; label: string | null; clicks: number; pix: number; paid: number; revenue_cents: number }[];
+export type Series = { bucket: string; clicks: number; pix: number; paid: number; revenue_cents: number }[];
+export type Breakdown = { key: string; label: string | null; clicks: number; pix: number; paid: number; revenue_cents: number }[];
 
-function useRpc<T>(name: string, args: Record<string, unknown>, key: unknown[]) {
+export function useRpc<T>(name: string, args: Record<string, unknown>, key: unknown[]) {
   return useQuery({
     queryKey: ["rpc", name, ...key],
     refetchInterval: 60_000,
@@ -92,7 +92,7 @@ function Overview() {
   );
 }
 
-function RefreshButton({ updatedAt, fetching, onClick }: { updatedAt: number; fetching: boolean; onClick: () => void }) {
+export function RefreshButton({ updatedAt, fetching, onClick }: { updatedAt: number; fetching: boolean; onClick: () => void }) {
   const [, tick] = useState(0);
   useEffect(() => { const t = setInterval(() => tick((x) => x + 1), 15_000); return () => clearInterval(t); }, []);
   const ago = updatedAt ? Math.max(0, Math.round((Date.now() - updatedAt) / 60_000)) : null;
@@ -107,7 +107,7 @@ function RefreshButton({ updatedAt, fetching, onClick }: { updatedAt: number; fe
 }
 
 // ─── shared states ────────────────────────────────────────────────────────
-function Card({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
+export function Card({ title, children, className = "" }: { title?: string; children: React.ReactNode; className?: string }) {
   return (
     <section className={`glass rounded-2xl border p-4 ${className}`}>
       {title && <h2 className="mb-3 font-display text-sm font-semibold text-muted-foreground">{title}</h2>}
@@ -115,7 +115,7 @@ function Card({ title, children, className = "" }: { title?: string; children: R
     </section>
   );
 }
-function ErrorState({ onRetry }: { onRetry: () => void }) {
+export function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
     <div className="flex flex-col items-start gap-2 text-sm">
       <p className="text-destructive">Não foi possível carregar estes dados.</p>
@@ -123,7 +123,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
     </div>
   );
 }
-function Empty({ msg, hint }: { msg: string; hint: string }) {
+export function Empty({ msg, hint }: { msg: string; hint: string }) {
   return <div className="py-6 text-center text-sm"><p>{msg}</p><p className="text-muted-foreground">{hint}</p></div>;
 }
 
@@ -221,7 +221,7 @@ function Kpis({ cur, prev, series }: { cur: ReturnType<typeof useRpc<Overview>>;
 }
 
 // ─── funnel ───────────────────────────────────────────────────────────────
-function FunnelBlock({ q }: { q: ReturnType<typeof useRpc<Overview>> }) {
+export function FunnelBlock({ q }: { q: ReturnType<typeof useRpc<Overview>> }) {
   return (
     <Card title="Funil de conversão">
       {q.isError ? <ErrorState onRetry={() => q.refetch()} /> : !q.data ? <Skeleton className="h-56" /> : (() => {
@@ -295,12 +295,12 @@ function TimeChart({ q, hourly }: { q: ReturnType<typeof useRpc<Series>>; hourly
 }
 
 // ─── breakdowns ───────────────────────────────────────────────────────────
-function useBreakdown(dim: "plan" | "campaign" | "seller" | "state") {
+export function useBreakdown(dim: "plan" | "campaign" | "seller" | "state") {
   const f = useAdminFilters();
   return useRpc<Breakdown>("admin_breakdown", { p_from: f.from, p_to: f.to, p_campaign: f.campaign, p_seller: f.seller, p_dim: dim }, [dim, f.from, f.to, f.campaign, f.seller]);
 }
 
-const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+export const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
 
 function PlanMix() {
   const q = useBreakdown("plan");
@@ -356,7 +356,7 @@ function Ranking({ dim, title }: { dim: "campaign" | "seller"; title: string }) 
   );
 }
 
-function States() {
+export function States() {
   const q = useBreakdown("state");
   const all = (q.data ?? []).filter((r) => r.clicks > 0).sort((a, b) => b.clicks - a.clicks);
   const top = all.slice(0, 8);
