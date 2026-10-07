@@ -24,3 +24,25 @@ export async function logAdminAction(
     details: (entry.details ?? {}) as never,
   });
 }
+
+/** Sends a Telegram message and returns a human-readable pt-BR error (never the token). */
+export async function telegramSendVerbose(chatId: string, text: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const token = process.env["TELEGRAM_BOT_TOKEN"];
+  if (!token) return { ok: false, error: "Bot do Telegram não configurado (TELEGRAM_BOT_TOKEN pendente)." };
+  if (!chatId) return { ok: false, error: "Chat ID não informado." };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
+    });
+    if (res.ok) return { ok: true };
+    const j = (await res.json().catch(() => ({}))) as { description?: string };
+    const d = (j.description ?? "").toLowerCase();
+    if (d.includes("chat not found") || d.includes("bot can't initiate") || d.includes("blocked"))
+      return { ok: false, error: "Bot não iniciado pelo destinatário (ou bloqueado). Peça para abrir o bot e enviar /start." };
+    if (res.status === 401) return { ok: false, error: "Token do bot inválido." };
+    return { ok: false, error: `Telegram recusou a mensagem (${res.status}).` };
+  } catch {
+    return { ok: false, error: "Não foi possível falar com o Telegram." };
+  }
+}

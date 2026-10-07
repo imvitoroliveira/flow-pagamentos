@@ -36,7 +36,7 @@ export const ratio = (a: number, b: number) => (b ? (100 * a) / b : null);
 export const SP_TZ = "America/Sao_Paulo";
 export const dtSP = (s: string) => new Date(s).toLocaleString("pt-BR", { timeZone: SP_TZ, day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 const dur = (s: number | null | undefined) => (s == null ? "—" : s < 60 ? `${Math.round(s)}s` : s < 3600 ? `${Math.round(s / 60)} min` : `${(s / 3600).toFixed(1)} h`);
-const STATUS: Record<string, string> = { pending: "Pendente", paid: "Pago", renewed: "Renovado", renewal_failed: "Falha renovação", expired: "Expirado", cancelled: "Cancelado" };
+export const STATUS: Record<string, string> = { pending: "Pendente", paid: "Pago", renewed: "Renovado", renewal_failed: "Falha renovação", expired: "Expirado", cancelled: "Cancelado" };
 
 export type Overview = {
   clicks: number; page_sessions: number; checkout_sessions: number; pix_generated: number; paid_count: number;
