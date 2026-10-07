@@ -22,6 +22,13 @@
       "when": 1791205402294,
       "tag": "0002_admin_stage_a",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791335211781,
+      "tag": "0003_admin_stage_c",
+      "breakpoints": true
     }
   ]
 }
