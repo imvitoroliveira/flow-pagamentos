@@ -9,7 +9,7 @@ export const Route = createFileRoute("/r/$slug")({
         const { makeRefCode, hashIp } = await import("@/lib/checkout.server");
         const url = new URL(request.url);
         const { data: c } = await db.from("campaigns").select("*").eq("slug", params.slug).maybeSingle();
-        if (!c) return Response.redirect(new URL("/pagar", url).toString(), 302);
+        if (!c || c.active === false) return Response.redirect(new URL("/pagar", url).toString(), 302);
 
         const cookies = Object.fromEntries(
           (request.headers.get("cookie") ?? "").split(";").map((p) => p.trim().split("=")).filter((p) => p[0]),
@@ -32,7 +32,9 @@ export const Route = createFileRoute("/r/$slug")({
           if (!error) break;
           ref = makeRefCode();
         }
-        if (!c.destination_whatsapp) return Response.redirect(new URL(`/pagar?ref=${ref}`, url).toString(), 302);
+        const plano = url.searchParams.get("plano");
+        const toPagar = `/pagar?ref=${ref}${plano && /^[a-z]+$/.test(plano) ? `&plano=${plano}` : ""}`;
+        if (url.searchParams.get("pagar") === "1" || !c.destination_whatsapp) return Response.redirect(new URL(toPagar, url).toString(), 302);
         const msg = `${c.prefilled_message ?? "Olá! Quero assinar o NATV."} [${ref}]`;
         const wa = `https://wa.me/${c.destination_whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
         return Response.redirect(wa, 302);
