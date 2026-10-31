@@ -63,13 +63,15 @@ export async function createPayment(input: CreatePaymentInput) {
   const { data: plan } = await sb.from("plans").select("*").eq("slug", input.plan_slug).eq("active", true).maybeSingle();
   if (!plan) throw new PublicError("Plano inválido");
 
+  const { findPanelUser } = await import("./renewal.server");
+  let panelUser: Awaited<ReturnType<typeof findPanelUser>>;
   try {
-    const { findPanelUser } = await import("./renewal.server");
-    if (!(await findPanelUser(input.panel_username))) throw new PublicError("Usuário do aplicativo não encontrado. Confira e tente novamente.");
+    panelUser = await findPanelUser(input.panel_username);
   } catch (e) {
-    if (e instanceof PublicError) throw e;
-    console.error("panel lookup failed", e); // panel down: don't block the sale
+    console.error("panel lookup failed", e);
+    throw new PublicError("Não foi possível confirmar o usuário agora. Tente novamente em instantes.");
   }
+  if (!panelUser) throw new PublicError("Usuário do aplicativo não encontrado. Confira e tente novamente.");
 
   const ref = input.ref_code?.toUpperCase() || null;
   let campaign_id: string | null = null;

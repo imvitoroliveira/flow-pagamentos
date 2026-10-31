@@ -70,8 +70,12 @@ export const Route = createFileRoute("/api/public/abacatepay-webhook")({
           }
           await db.from("events").insert({ order_id: order.id, ref_code: order.ref_code, type: "paid", metadata: { event_id: order.event_id } });
 
-          const steps = await Promise.allSettled([renewCustomer(order.id), notifySeller(order.id), sendConversionEvents(order.id)]);
-          const failed = steps.filter((s): s is PromiseRejectedResult => s.status === "rejected").map((s) => String(s.reason));
+          const [renewal, notify, conversions] = await Promise.allSettled([renewCustomer(order.id), notifySeller(order.id), sendConversionEvents(order.id)]);
+          const failed: string[] = [];
+          if (renewal.status === "rejected") failed.push(String(renewal.reason));
+          else if (!renewal.value.ok) failed.push("error" in renewal.value && renewal.value.error ? renewal.value.error : "renovação não concluída");
+          if (notify.status === "rejected") failed.push(String(notify.reason));
+          if (conversions.status === "rejected") failed.push(String(conversions.reason));
           await finish(failed.length ? failed.join("; ") : null);
           return new Response("ok");
         } catch (e) {

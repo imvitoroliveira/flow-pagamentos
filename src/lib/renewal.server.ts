@@ -50,34 +50,26 @@ async function activate(username: string, months: number) {
 }
 
 /**
- * Renews a paid order. Idempotent: only acts on status "paid" (or "renewal_failed" when retrying).
- * On failure schedules the next retry (1/5/15 min) or alerts the admin when exhausted.
+ * Renews a paid order. Only activates when the order is "paid" (first attempt) or, with
+ * allowFailed, "renewal_failed" (retries). Once the panel has accepted the activation the
+ * order is never flagged as failed, so a retry can't add the months a second time.
  */
 export async function renewCustomer(orderId: string, opts: { attempt?: number; allowFailed?: boolean; manual?: boolean } = {}) {
   const sb = await db();
   const attempt = opts.attempt ?? 0;
   const { data: o } = await sb.from("orders").select("id, status, panel_username, plans(slug, months)").eq("id", orderId).maybeSingle();
   if (!o) return { ok: false, error: "Pedido não encontrado" };
-  const allowed = opts.allowFailed ? ["paid", "renewal_failed"] : ["paid"];
+  const allowed = opts.allowFailed ? ["renewal_failed"] : ["paid"];
   if (!allowed.includes(o.status)) return { ok: o.status === "renewed", skipped: true };
 
   const months = o.plans?.months ?? ({ mensal: 1, trimestral: 3, semestral: 6 } as Record<string, number>)[o.plans?.slug ?? ""] ?? 1;
+  let user: PanelUser;
   try {
-    const user = await activate(o.panel_username, months);
-    // Guard against concurrent runs: only the first transition wins.
-    await sb.from("orders")
-      .update({ status: "renewed", renewed_at: new Date().toISOString(), renewal_error: null })
-      .eq("id", orderId).in("status", allowed as ("paid" | "renewal_failed")[]);
-    await sb.from("events").insert({
-      order_id: orderId, type: "renewed",
-      metadata: { months, attempt, exp_date: user?.exp_date ?? null },
-    });
-    await sb.from("renewal_retries").update({ status: "cancelled" }).eq("order_id", orderId).eq("status", "pending");
-    return { ok: true };
+    user = await activate(o.panel_username, months);
   } catch (e) {
     const msg = (e as Error).message.slice(0, 500);
     console.error("[renew-customer]", orderId, attempt, msg);
-    await sb.from("orders").update({ status: "renewal_failed", renewal_error: msg }).eq("id", orderId);
+    await sb.from("orders").update({ status: "renewal_failed", renewal_error: msg }).eq("id", orderId).in("status", allowed as ("paid" | "renewal_failed")[]);
     const next = attempt + 1;
     if (opts.manual) {
       // manual retry from /admin: no automatic follow-ups
@@ -90,6 +82,34 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
     }
     return { ok: false, error: msg };
   }
+
+  const recorded = await recordRenewed(sb, orderId, allowed, months, attempt, user);
+  if (!recorded.ok) return { ok: false, error: recorded.error };
+  await sb.from("renewal_retries").update({ status: "cancelled" }).eq("order_id", orderId).eq("status", "pending");
+  return { ok: true };
+}
+
+async function recordRenewed(
+  sb: Awaited<ReturnType<typeof db>>,
+  orderId: string,
+  allowed: string[],
+  months: number,
+  attempt: number,
+  user: PanelUser,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const { error: upErr } = await sb.from("orders")
+    .update({ status: "renewed", renewed_at: new Date().toISOString(), renewal_error: null })
+    .eq("id", orderId).in("status", allowed as ("paid" | "renewal_failed")[]);
+  const { error: evErr } = await sb.from("events").insert({
+    order_id: orderId, type: "renewed",
+    metadata: { months, attempt, exp_date: user.exp_date ?? null },
+  });
+  if (upErr || evErr) {
+    const error = "Renovado no painel, mas não foi possível registrar no sistema. Confira o pedido manualmente.";
+    console.error("[renew-customer] recorded after activation failed", orderId, upErr?.message, evErr?.message);
+    return { ok: false, error };
+  }
+  return { ok: true };
 }
 
 async function alertAdmin(orderId: string, username: string, error: string) {
