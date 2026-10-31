@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader as Loader2, RefreshCw } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { retryRenewal } from "@/lib/renewal.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -185,23 +185,3 @@ export function Campaigns() {
   );
 }
 
-export function Webhooks() {
-  const { data = [] } = useQuery({
-    queryKey: ["webhooks"],
-    queryFn: async () => (await supabase.from("webhook_logs").select("*").order("created_at", { ascending: false }).limit(100)).data ?? [],
-  });
-  return (
-    <div className="space-y-2">
-      {data.map((w) => (
-        <details key={w.id} className="rounded-2xl border bg-card p-4">
-          <summary className="flex cursor-pointer items-center justify-between gap-2 text-sm">
-            <span>{w.provider} · {w.event ?? "—"} · {dt(w.created_at)}</span>
-            <Badge variant={w.processed ? "default" : "destructive"}>{w.processed ? "ok" : w.error ?? "erro"}</Badge>
-          </summary>
-          <pre className="mt-3 overflow-x-auto text-xs text-muted-foreground">{JSON.stringify(w.payload, null, 2)}</pre>
-        </details>
-      ))}
-      {data.length === 0 && <p className="text-sm text-muted-foreground">Nenhum webhook recebido.</p>}
-    </div>
-  );
-}
