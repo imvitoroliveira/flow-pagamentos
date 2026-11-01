@@ -142,7 +142,7 @@ function SellerSheet({ s, onClose }: { s: Seller | null; onClose: () => void }) 
   });
   return (
     <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-md">
+      <SheetContent className="w-full overflow-y-auto pb-6 sm:max-w-md">
         <SheetHeader><SheetTitle>{s ? "Editar vendedor" : "Novo vendedor"}</SheetTitle><SheetDescription>Campos com * são obrigatórios.</SheetDescription></SheetHeader>
         <form onSubmit={submit} className="grid gap-4 px-4" noValidate>
           <div className="grid gap-1.5"><Label htmlFor="sf-name">Nome *</Label><Input id="sf-name" className="h-11" {...register("name")} />{errors.name && <p role="alert" className="text-xs text-destructive">{errors.name.message}</p>}</div>
