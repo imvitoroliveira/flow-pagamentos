@@ -47,6 +47,41 @@ export type Database = {
         }
         Relationships: []
       }
+      campaign_links: {
+        Row: {
+          campaign_id: string
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string
+        }
+        Insert: {
+          campaign_id: string
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label: string
+        }
+        Update: {
+          campaign_id?: string
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_links_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaigns: {
         Row: {
           active: boolean
@@ -118,6 +153,7 @@ export type Database = {
           fbp: string | null
           id: string
           ip_hash: string | null
+          link_id: string | null
           ref_code: string
           source: string
           state: string | null
@@ -132,6 +168,7 @@ export type Database = {
           fbp?: string | null
           id?: string
           ip_hash?: string | null
+          link_id?: string | null
           ref_code: string
           source?: string
           state?: string | null
@@ -146,6 +183,7 @@ export type Database = {
           fbp?: string | null
           id?: string
           ip_hash?: string | null
+          link_id?: string | null
           ref_code?: string
           source?: string
           state?: string | null
@@ -158,6 +196,13 @@ export type Database = {
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clicks_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_links"
             referencedColumns: ["id"]
           },
         ]
@@ -388,24 +433,33 @@ export type Database = {
       sellers: {
         Row: {
           active: boolean
+          commission_bps: number
           id: string
+          login_email: string | null
           name: string
           telegram_chat_id: string | null
           telegram_tested_at: string | null
+          user_id: string | null
         }
         Insert: {
           active?: boolean
+          commission_bps?: number
           id?: string
+          login_email?: string | null
           name: string
           telegram_chat_id?: string | null
           telegram_tested_at?: string | null
+          user_id?: string | null
         }
         Update: {
           active?: boolean
+          commission_bps?: number
           id?: string
+          login_email?: string | null
           name?: string
           telegram_chat_id?: string | null
           telegram_tested_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -477,6 +531,7 @@ export type Database = {
           fbp: string | null
           id: string
           ip_hash: string | null
+          link_id: string | null
           ref_code: string
           source: string
           state: string | null
@@ -616,6 +671,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      my_seller_id: { Args: never; Returns: string }
     }
     Enums: {
       app_role: "admin" | "seller"
