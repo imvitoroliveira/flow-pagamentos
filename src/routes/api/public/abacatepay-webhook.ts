@@ -3,17 +3,20 @@ import { createFileRoute } from "@tanstack/react-router";
 type Payload = {
   event?: string;
   data?: {
+    transparent?: { id?: string; metadata?: { order_id?: string } };
     pixQrCode?: { id?: string; metadata?: { order_id?: string } };
     billing?: { id?: string; metadata?: { order_id?: string } };
     metadata?: { order_id?: string };
   };
 };
 
+const PAID_EVENTS = new Set(["transparent.completed", "billing.paid"]);
+
 export const Route = createFileRoute("/api/public/abacatepay-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const { verifyAbacateWebhook, renewCustomer, notifySeller, sendConversionEvents } = await import("@/lib/payments.server");
+        const { verifyAbacateWebhook, settlePaidOrder } = await import("@/lib/payments.server");
         const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
 
         const raw = await request.text();
@@ -39,44 +42,25 @@ export const Route = createFileRoute("/api/public/abacatepay-webhook")({
         };
 
         try {
-          if (payload?.event !== "billing.paid") {
+          if (!PAID_EVENTS.has(payload?.event ?? "")) {
             await finish(null);
             return new Response("ignored");
           }
-          const d = payload.data ?? {};
-          const orderId = d.pixQrCode?.metadata?.order_id ?? d.billing?.metadata?.order_id ?? d.metadata?.order_id;
-          const abacateId = d.pixQrCode?.id ?? d.billing?.id;
+          const d = payload?.data ?? {};
+          const orderId = d.transparent?.metadata?.order_id ?? d.pixQrCode?.metadata?.order_id ?? d.billing?.metadata?.order_id ?? d.metadata?.order_id;
+          const abacateId = d.transparent?.id ?? d.pixQrCode?.id ?? d.billing?.id;
 
-          let q = db.from("orders").select("id, status, ref_code, event_id");
+          let q = db.from("orders").select("id, status");
           q = orderId ? q.eq("id", orderId) : q.eq("abacate_id", abacateId ?? "__none__");
           const { data: order } = await q.maybeSingle();
           if (!order) throw new Error("pedido não encontrado");
 
-          if (order.status === "paid" || order.status === "renewed") {
+          const result = await settlePaidOrder(order.id);
+          if (result.alreadyProcessed) {
             await finish(null);
             return new Response("already processed");
           }
-
-          // Idempotent transition: only flips rows that are not already paid/renewed.
-          const { data: updated } = await db
-            .from("orders")
-            .update({ status: "paid", paid_at: new Date().toISOString() })
-            .eq("id", order.id)
-            .not("status", "in", "(paid,renewed)")
-            .select("id");
-          if (!updated?.length) {
-            await finish(null);
-            return new Response("already processed");
-          }
-          await db.from("events").insert({ order_id: order.id, ref_code: order.ref_code, type: "paid", metadata: { event_id: order.event_id } });
-
-          const [renewal, notify, conversions] = await Promise.allSettled([renewCustomer(order.id), notifySeller(order.id), sendConversionEvents(order.id)]);
-          const failed: string[] = [];
-          if (renewal.status === "rejected") failed.push(String(renewal.reason));
-          else if (!renewal.value.ok) failed.push("error" in renewal.value && renewal.value.error ? renewal.value.error : "renovação não concluída");
-          if (notify.status === "rejected") failed.push(String(notify.reason));
-          if (conversions.status === "rejected") failed.push(String(conversions.reason));
-          await finish(failed.length ? failed.join("; ") : null);
+          await finish(result.failed.length ? result.failed.join("; ") : null);
           return new Response("ok");
         } catch (e) {
           await finish((e as Error).message);

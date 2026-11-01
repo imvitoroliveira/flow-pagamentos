@@ -137,6 +137,8 @@ export async function createPayment(input: CreatePaymentInput) {
 
 export async function getOrderPublicStatus(id: string) {
   const sb = await db();
+  const { data: pending } = await sb.from("orders").select("status, abacate_id").eq("id", id).maybeSingle();
+  if (pending?.status === "pending" && pending.abacate_id) await reconcilePendingPayment(id, pending.abacate_id);
   const { data: o } = await sb
     .from("orders")
     .select("status, paid_at, renewed_at, plans(name, months), campaigns(destination_whatsapp)")
@@ -178,6 +180,40 @@ export async function renewCustomer(orderId: string) {
   const { renewCustomer: run } = await import("./renewal.server");
   return run(orderId);
 }
+/** Marks the order paid once (conditional update) and runs the post-payment steps. */
+export async function settlePaidOrder(orderId: string) {
+  const sb = await db();
+  const { data: updated } = await sb
+    .from("orders")
+    .update({ status: "paid", paid_at: new Date().toISOString() })
+    .eq("id", orderId)
+    .not("status", "in", "(paid,renewed)")
+    .select("id, ref_code, event_id");
+  const order = updated?.[0];
+  if (!order) return { alreadyProcessed: true as const, failed: [] as string[] };
+
+  await sb.from("events").insert({ order_id: order.id, ref_code: order.ref_code, type: "paid", metadata: { event_id: order.event_id } });
+  const [renewal, notify, conversions] = await Promise.allSettled([renewCustomer(order.id), notifySeller(order.id), sendConversionEvents(order.id)]);
+  const failed: string[] = [];
+  if (renewal.status === "rejected") failed.push(String(renewal.reason));
+  else if (!renewal.value.ok) failed.push("error" in renewal.value && renewal.value.error ? renewal.value.error : "renovação não concluída");
+  if (notify.status === "rejected") failed.push(String(notify.reason));
+  if (conversions.status === "rejected") failed.push(String(conversions.reason));
+  return { alreadyProcessed: false as const, failed };
+}
+
+/** Asks AbacatePay directly, so a missed webhook does not leave the customer waiting forever. */
+async function reconcilePendingPayment(orderId: string, abacateId: string) {
+  const key = process.env["ABACATEPAY_API_KEY"];
+  if (!key) return;
+  const res = await fetch(`${ABACATE_API_BASE}/v2/transparents/check?id=${encodeURIComponent(abacateId)}`, {
+    headers: { Authorization: `Bearer ${key}` },
+  }).catch(() => null);
+  if (!res?.ok) return;
+  const json = (await res.json().catch(() => null)) as { data?: { status?: string } } | null;
+  if (json?.data?.status === "PAID") await settlePaidOrder(orderId);
+}
+
 export async function notifySeller(orderId: string) {
   console.log("[notify-seller] stub", orderId);
 }
