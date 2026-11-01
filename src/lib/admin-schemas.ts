@@ -46,5 +46,6 @@ export const sellerSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome").max(80),
   telegram_chat_id: z.string().trim().max(20).refine((v) => !v || /^-?\d{3,20}$/.test(v), "Chat ID deve ser numérico (pode começar com -)").optional().default(""),
   active: z.boolean(),
+  commission_pct: z.coerce.number().min(0, "Mínimo 0%").max(100, "Máximo 100%").optional(),
 });
 export type SellerInput = z.input<typeof sellerSchema>;

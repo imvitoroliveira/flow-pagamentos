@@ -64,12 +64,55 @@ export const saveSeller = createServerFn({ method: "POST" })
   .inputValidator((d) => sellerSchema.extend({ id: z.string().uuid().optional() }).parse(d))
   .handler(async ({ data, context }) => {
     const { ctx, logAdminAction } = await guard(context);
-    const row = { name: data.name, telegram_chat_id: data.telegram_chat_id || null, active: data.active };
+    const row = {
+      name: data.name, telegram_chat_id: data.telegram_chat_id || null, active: data.active,
+      ...(data.commission_pct !== undefined ? { commission_bps: Math.round(data.commission_pct * 100) } : {}),
+    };
     const r = data.id
       ? await ctx.supabase.from("sellers").update(row).eq("id", data.id).select("id").single()
       : await ctx.supabase.from("sellers").insert(row).select("id").single();
     if (r.error) return fail("Não foi possível salvar o vendedor.");
     await logAdminAction(ctx, { action: data.id ? "seller.update" : "seller.create", entity: "seller", entity_id: r.data.id, details: { name: data.name, active: data.active } });
+    return { ok: true as const };
+  });
+
+/** Creates (or updates) the seller's login with email + password and grants the seller role. */
+export const setSellerAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    seller_id: z.string().uuid(),
+    email: z.string().trim().toLowerCase().email("E-mail inválido").max(255),
+    password: z.string().min(8, "Mínimo 8 caracteres").max(72),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: seller } = await supabaseAdmin.from("sellers").select("id, user_id").eq("id", data.seller_id).maybeSingle();
+    if (!seller) return fail("Vendedor não encontrado.");
+    let userId = seller.user_id as string | null;
+    if (userId) {
+      const u = await supabaseAdmin.auth.admin.updateUserById(userId, { email: data.email, password: data.password, email_confirm: true });
+      if (u.error) return fail("Não foi possível atualizar o acesso (e-mail já usado por outra conta?).");
+    } else {
+      const c = await supabaseAdmin.auth.admin.createUser({ email: data.email, password: data.password, email_confirm: true });
+      if (c.error) {
+        const { data: list } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+        userId = list?.users.find((u) => u.email?.toLowerCase() === data.email)?.id ?? null;
+        if (!userId) return fail("Não foi possível criar o acesso.");
+        const { data: other } = await supabaseAdmin.from("sellers").select("id").eq("user_id", userId).maybeSingle();
+        if (other && other.id !== seller.id) return fail("Este e-mail já é usado por outro vendedor.");
+        const u = await supabaseAdmin.auth.admin.updateUserById(userId, { password: data.password });
+        if (u.error) return fail("Não foi possível definir a senha.");
+      } else userId = c.data.user.id;
+    }
+    const { data: has } = await supabaseAdmin.from("user_roles").select("id").eq("user_id", userId).eq("role", "seller").maybeSingle();
+    if (!has) {
+      const { error } = await supabaseAdmin.from("user_roles").insert({ user_id: userId, role: "seller" });
+      if (error) return fail("Acesso criado, mas não foi possível conceder a permissão.");
+    }
+    const { error } = await supabaseAdmin.from("sellers").update({ user_id: userId, login_email: data.email }).eq("id", seller.id);
+    if (error) return fail("Não foi possível vincular o acesso ao vendedor.");
+    await logAdminAction(ctx, { action: "seller.access", entity: "seller", entity_id: seller.id, details: { email: data.email } });
     return { ok: true as const };
   });
 

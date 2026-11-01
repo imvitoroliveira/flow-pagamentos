@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { deleteSeller, saveSeller, testSellerTelegram } from "@/lib/admin-actions.functions";
+import { deleteSeller, saveSeller, setSellerAccess, testSellerTelegram } from "@/lib/admin-actions.functions";
 import { sellerSchema, type SellerInput } from "@/lib/admin-schemas";
 import { useAdminFilters } from "./admin";
 import { brl, Card, dtSP, Empty, ErrorState, num, pct, ratio, useRpc, type Breakdown } from "./admin.index";
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/_authenticated/admin/vendedores")({
   component: SellersPage,
 });
 
-type Seller = { id: string; name: string; telegram_chat_id: string | null; active: boolean; telegram_tested_at: string | null };
+type Seller = { id: string; name: string; telegram_chat_id: string | null; active: boolean; telegram_tested_at: string | null; login_email: string | null; commission_bps: number };
 
 function SellersPage() {
   const f = useAdminFilters();
@@ -131,7 +131,7 @@ function SellerCard({ s, m, loadingM, camps, hasOrders, onEdit }: { s: Seller; m
 function SellerSheet({ s, onClose }: { s: Seller | null; onClose: () => void }) {
   const qc = useQueryClient();
   const save = useServerFn(saveSeller);
-  const form = useForm<SellerInput>({ resolver: zodResolver(sellerSchema), defaultValues: { name: s?.name ?? "", telegram_chat_id: s?.telegram_chat_id ?? "", active: s?.active ?? true } });
+  const form = useForm<SellerInput>({ resolver: zodResolver(sellerSchema), defaultValues: { name: s?.name ?? "", telegram_chat_id: s?.telegram_chat_id ?? "", active: s?.active ?? true, commission_pct: (s?.commission_bps ?? 0) / 100 } });
   const { register, watch, setValue, formState: { errors, isSubmitting } } = form;
   const submit = form.handleSubmit(async (v) => {
     const r = await save({ data: { ...v, ...(s ? { id: s.id } : {}) } });
@@ -147,10 +147,43 @@ function SellerSheet({ s, onClose }: { s: Seller | null; onClose: () => void }) 
         <form onSubmit={submit} className="grid gap-4 px-4" noValidate>
           <div className="grid gap-1.5"><Label htmlFor="sf-name">Nome *</Label><Input id="sf-name" className="h-11" {...register("name")} />{errors.name && <p role="alert" className="text-xs text-destructive">{errors.name.message}</p>}</div>
           <div className="grid gap-1.5"><Label htmlFor="sf-chat">Telegram chat ID</Label><Input id="sf-chat" className="h-11 font-mono" inputMode="numeric" placeholder="123456789" {...register("telegram_chat_id")} />{errors.telegram_chat_id && <p role="alert" className="text-xs text-destructive">{errors.telegram_chat_id.message}</p>}</div>
+          <div className="grid gap-1.5"><Label htmlFor="sf-com">Comissão (%)</Label><Input id="sf-com" className="h-11" type="number" step="0.1" min="0" max="100" inputMode="decimal" {...register("commission_pct")} />{errors.commission_pct && <p role="alert" className="text-xs text-destructive">{errors.commission_pct.message}</p>}</div>
           <div className="flex min-h-11 items-center justify-between"><Label htmlFor="sf-active">Ativo</Label><Switch id="sf-active" checked={watch("active")} onCheckedChange={(v) => setValue("active", v)} /></div>
           <Button type="submit" className="h-11" disabled={isSubmitting}>{isSubmitting ? "Salvando…" : "Salvar"}</Button>
         </form>
+        {s && <AccessForm s={s} />}
       </SheetContent>
     </Sheet>
+  );
+}
+
+function AccessForm({ s }: { s: Seller }) {
+  const qc = useQueryClient();
+  const run = useServerFn(setSellerAccess);
+  const [email, setEmail] = useState(s.login_email ?? "");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (password.length < 8) { toast.error("A senha precisa ter pelo menos 8 caracteres"); return; }
+    setBusy(true);
+    try {
+      const r = await run({ data: { seller_id: s.id, email, password } });
+      if (!r.ok) { toast.error(r.error); return; }
+      toast.success("Acesso do vendedor salvo");
+      setPassword("");
+      qc.invalidateQueries({ queryKey: ["sellers-full"] });
+    } catch { toast.error("Não foi possível salvar o acesso"); } finally { setBusy(false); }
+  }
+  return (
+    <form onSubmit={submit} className="mt-6 grid gap-3 border-t px-4 pt-4" noValidate>
+      <div>
+        <p className="font-medium">Acesso ao sistema</p>
+        <p className="text-xs text-muted-foreground">{s.login_email ? `Entra com ${s.login_email}. Preencha para trocar e-mail ou senha.` : "Defina o e-mail e a senha que o vendedor usará para entrar."}</p>
+      </div>
+      <div className="grid gap-1.5"><Label htmlFor="sa-email">E-mail *</Label><Input id="sa-email" type="email" autoComplete="off" className="h-11" value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+      <div className="grid gap-1.5"><Label htmlFor="sa-pw">Senha * (mín. 8)</Label><Input id="sa-pw" type="password" autoComplete="new-password" className="h-11" value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+      <Button type="submit" variant="outline" className="h-11" disabled={busy}>{busy ? "Salvando…" : s.login_email ? "Atualizar acesso" : "Criar acesso"}</Button>
+    </form>
   );
 }
