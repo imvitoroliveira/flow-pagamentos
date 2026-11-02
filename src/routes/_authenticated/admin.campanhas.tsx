@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Archive, ArchiveRestore, BarChart3, Copy, CreditCard, Download, Pencil, Plus, QrCode, Search, Trash2, CopyPlus } from "lucide-react";
 import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
+import { CampaignLinks } from "@/components/campaign-links";
 import { PageTitle } from "@/components/admin/coming-soon";
 import { Confirm, Tone } from "@/components/admin/confirm";
 import { Button } from "@/components/ui/button";
@@ -140,6 +141,10 @@ function CampaignCard({ c, m, loadingM, onEdit, onDup, onQr, onPay, onDetail }: 
           </div>
         ))}
       </dl>
+      <details className="rounded-lg border p-2">
+        <summary className="min-h-11 cursor-pointer content-center px-1 text-sm">Links personalizados</summary>
+        <div className="pt-2"><CampaignLinks campaignId={c.id} slug={c.slug} /></div>
+      </details>
       <div className="flex flex-wrap gap-1">
         <Button variant="outline" className="h-11" onClick={onDetail}><BarChart3 aria-hidden /> Detalhes</Button>
         <Button variant="outline" className="h-11" onClick={onEdit}><Pencil aria-hidden /> Editar</Button>

@@ -1,15 +1,15 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-  beforeLoad: ({ search }) => {
-    throw redirect({ to: "/pagar", search: search as never });
+  beforeLoad: () => {
+    throw redirect({ to: "/auth" });
   },
   head: () => ({
     meta: [
-      { title: "Flow Pagamentos — Assine ou renove" },
-      { name: "description", content: "Assine ou renove com PIX em segundos." },
-      { property: "og:title", content: "Flow Pagamentos — Assine ou renove" },
-      { property: "og:description", content: "Assine ou renove com PIX em segundos." },
+      { title: "NATV — Acesso ao sistema" },
+      { name: "description", content: "Acesso de administradores e vendedores NATV." },
+      { property: "og:title", content: "NATV — Acesso ao sistema" },
+      { property: "og:description", content: "Acesso de administradores e vendedores NATV." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

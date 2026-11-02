@@ -22,8 +22,8 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-primary">404</h1>
         <h2 className="mt-4 text-xl font-semibold">Página não encontrada</h2>
         <div className="mt-6">
-          <Link to="/pagar" className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-            Ir para pagamento
+          <Link to="/auth" className="inline-flex rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            Ir para o login
           </Link>
         </div>
       </div>
