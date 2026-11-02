@@ -216,7 +216,7 @@ function SellerPortal() {
   );
 }
 
-function Shell({ name, onSignOut, children }: { name?: string; onSignOut: () => void; children: React.ReactNode }) {
+function Shell({ name, onSignOut, children }: { name?: string | undefined; onSignOut: () => void; children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 flex min-h-14 items-center justify-between border-b bg-background/80 px-4 backdrop-blur-md">
@@ -235,7 +235,7 @@ function Empty({ msg, hint }: { msg: string; hint: string }) {
   return <div className="rounded-2xl border p-6 text-center"><p className="font-medium">{msg}</p><p className="mt-1 text-sm text-muted-foreground">{hint}</p></div>;
 }
 
-function NewCampaign({ sellerId }: { sellerId?: string }) {
+function NewCampaign({ sellerId }: { sellerId?: string | undefined }) {
   const qc = useQueryClient();
   const [name, setName] = useState("");
   const [source, setSource] = useState("");
