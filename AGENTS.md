@@ -27,3 +27,5 @@
 9. Never edit generated files (routeTree.gen.ts, supabase types/client/auth-middleware); DB changes only via migrations.
 10. Destructive or money/order-state actions require an AlertDialog confirmation and write to admin_audit_log (logAdminAction).
 - Admin global filters live in the URL (validateSearch on /admin layout, resolved by useAdminFilters/resolveRange in src/lib/admin-filters.ts). Why: shareable links and one source of truth.
+- Sellers log in with accounts created by admins (setSellerAccess → user_roles 'seller' + sellers.user_id); the seller portal /vendedor reads/writes only through RLS scoped by my_seller_id(). Why: sellers must only see their own campaigns, links, sales and customers.
+- Payment links are named campaign_links: /r/<campaign slug>?l=<code>&pagar=1 records the click with link_id, then opens /pagar. Why: per-link attribution without touching the payment core.
