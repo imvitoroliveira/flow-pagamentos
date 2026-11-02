@@ -10,10 +10,10 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Admin NATV" },
-      { name: "description", content: "Acesso restrito à administração NATV." },
-      { property: "og:title", content: "Entrar — Admin NATV" },
-      { property: "og:description", content: "Acesso restrito à administração NATV." },
+      { title: "Entrar — NATV" },
+      { name: "description", content: "Acesso restrito a administradores e vendedores NATV." },
+      { property: "og:title", content: "Entrar — NATV" },
+      { property: "og:description", content: "Acesso restrito a administradores e vendedores NATV." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "robots", content: "noindex" },
@@ -36,12 +36,11 @@ function AuthPage() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error || !data.user) { setLoading(false); setMsg("E-mail ou senha inválidos"); return; }
     const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "admin" });
-    if (!isAdmin) {
-      await supabase.auth.signOut();
-      setLoading(false); setMsg("Esta conta não tem acesso ao painel");
-      return;
-    }
-    navigate({ to: "/admin" });
+    if (isAdmin) { navigate({ to: "/admin" }); return; }
+    const { data: isSeller } = await supabase.rpc("has_role", { _user_id: data.user.id, _role: "seller" });
+    if (isSeller) { navigate({ to: "/vendedor" }); return; }
+    await supabase.auth.signOut();
+    setLoading(false); setMsg("Esta conta não tem acesso ao sistema");
   }
 
   async function forgot(e: React.FormEvent) {
@@ -55,9 +54,9 @@ function AuthPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-5">
-      <h1 className="mb-1 font-display text-2xl font-bold">Admin NATV</h1>
+      <h1 className="mb-1 font-display text-2xl font-bold">NATV</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        {mode === "login" ? "Entre com sua conta de administrador." : "Informe seu e-mail para receber o link de redefinição."}
+        {mode === "login" ? "Entre com sua conta de administrador ou vendedor." : "Informe seu e-mail para receber o link de redefinição."}
       </p>
       <form onSubmit={mode === "login" ? login : forgot} className="space-y-4 rounded-2xl border bg-card p-5">
         <div className="space-y-1.5">

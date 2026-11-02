@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PagarRouteImport } from './routes/pagar'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
@@ -56,6 +57,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedVendedorRoute = AuthenticatedVendedorRouteImport.update({
+  id: '/vendedor',
+  path: '/vendedor',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const RSlugRoute = RSlugRouteImport.update({
@@ -137,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/pagar': typeof PagarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/vendedor': typeof AuthenticatedVendedorRoute
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -178,6 +186,7 @@ export interface FileRoutesById {
   '/pagar': typeof PagarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
   '/r/$slug': typeof RSlugRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -200,6 +209,7 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/reset-password'
     | '/admin'
+    | '/vendedor'
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/pagar'
     | '/reset-password'
+    | '/vendedor'
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -240,6 +251,7 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/reset-password'
     | '/_authenticated/admin'
+    | '/_authenticated/vendedor'
     | '/r/$slug'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/clientes'
@@ -310,6 +322,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/vendedor': {
+      id: '/_authenticated/vendedor'
+      path: '/vendedor'
+      fullPath: '/vendedor'
+      preLoaderRoute: typeof AuthenticatedVendedorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/r/$slug': {
@@ -433,10 +452,12 @@ const AuthenticatedAdminRouteWithChildren =
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedVendedorRoute: typeof AuthenticatedVendedorRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedVendedorRoute: AuthenticatedVendedorRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

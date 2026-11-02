@@ -16,10 +16,17 @@ export const Route = createFileRoute("/r/$slug")({
         );
         const fbclid = url.searchParams.get("fbclid");
         const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
+        const code = url.searchParams.get("l");
+        let link_id: string | null = null;
+        if (code && /^[a-z0-9]{4,12}$/.test(code)) {
+          const { data: l } = await db.from("campaign_links").select("id").eq("code", code).eq("campaign_id", c.id).maybeSingle();
+          link_id = l?.id ?? null;
+        }
         let ref = makeRefCode();
         for (let i = 0; i < 3; i++) {
           const { error } = await db.from("clicks").insert({
             campaign_id: c.id,
+            link_id,
             ref_code: ref,
             fbp: cookies["_fbp"] ?? null,
             fbc: cookies["_fbc"] ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null),
