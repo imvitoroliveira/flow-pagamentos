@@ -13,7 +13,7 @@
 - Public writes (orders, events, clicks, webhook logs) go only through server functions/server routes using the service-role client; all sensitive tables are admin-only via RLS (has_role). Why: anon users must never write directly.
 - Payment core (AbacatePay, webhook verification, post-payment steps) lives in src/lib/payments.server.ts and is exposed via /api/public/* server routes (create-payment, check-order-status, abacatepay-webhook) plus server fns for the app UI. Why: no Supabase edge functions in TanStack Start; one shared implementation.
 - No self-signup: admins are granted only by inserting into user_roles (bootstrap trigger removed). Why: nobody becomes admin automatically.
-- Panel renewal + username lookup live in src/lib/renewal.server.ts; failed renewals queue in renewal_retries, processed by /api/public/renewal-retries via a cron job armed on enqueue and unscheduled when the queue drains. Why: bounded retries without a permanent poller.
+- Panel renewal + username lookup live in src/lib/renewal.server.ts; failed renewals queue in renewal_retries. A managed HTTP schedule (natv-reconcile-payments, every 2 min) calls /api/public/reconcile-payments, which settles PIX that AbacatePay reports PAID (missed webhooks) and runs due retries. Why: payments must renew even if the webhook never arrives; arm/disarm SQL cron jobs are unauthenticated and must not be used.
 
 ## Admin rules
 1. Do not change the payment core (payments.server.ts, src/routes/api/public/*, webhook, /pagar flow) unless explicitly asked; only import and call existing functions.
