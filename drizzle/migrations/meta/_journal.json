@@ -50,6 +50,13 @@
       "when": 1793666149101,
       "tag": "0006_harden_functions",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1793669610862,
+      "tag": "0007_clients_and_credit_schedules",
+      "breakpoints": true
     }
   ]
 }
