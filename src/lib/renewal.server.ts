@@ -76,7 +76,6 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
     } else if (next <= RETRY_DELAYS_MIN.length) {
       const run_at = new Date(Date.now() + (RETRY_DELAYS_MIN[next - 1] ?? 15) * 60_000).toISOString();
       await sb.from("renewal_retries").upsert({ order_id: orderId, attempt: next, run_at, status: "pending" }, { onConflict: "order_id,attempt" });
-      await sb.rpc("arm_renewal_retries");
     } else {
       await alertAdmin(orderId, o.panel_username, msg);
     }
@@ -137,6 +136,5 @@ export async function processDueRetries() {
     await sb.from("renewal_retries").update({ status: res.ok ? "done" : "failed", last_error: res.ok ? null : (res.error ?? null) }).eq("id", r.id);
     processed++;
   }
-  await sb.rpc("disarm_renewal_retries");
   return { processed };
 }

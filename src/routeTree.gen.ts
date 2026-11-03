@@ -28,6 +28,7 @@ import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_auth
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
+import { Route as ApiPublicReconcilePaymentsRouteImport } from './routes/api/public/reconcile-payments'
 import { Route as ApiPublicRenewalRetriesRouteImport } from './routes/api/public/renewal-retries'
 
 const IndexRoute = IndexRouteImport.update({
@@ -131,6 +132,12 @@ const ApiPublicCreatePaymentRoute = ApiPublicCreatePaymentRouteImport.update({
   path: '/api/public/create-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicReconcilePaymentsRoute =
+  ApiPublicReconcilePaymentsRouteImport.update({
+    id: '/api/public/reconcile-payments',
+    path: '/api/public/reconcile-payments',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicRenewalRetriesRoute = ApiPublicRenewalRetriesRouteImport.update({
   id: '/api/public/renewal-retries',
   path: '/api/public/renewal-retries',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -175,6 +183,7 @@ export interface FileRoutesByTo {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
 }
@@ -198,6 +207,7 @@ export interface FileRoutesById {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
 }
@@ -221,6 +231,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/admin/'
   fileRoutesByTo: FileRoutesByTo
@@ -241,6 +252,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/admin'
   id:
@@ -263,6 +275,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/_authenticated/admin/'
   fileRoutesById: FileRoutesById
@@ -277,6 +290,7 @@ export interface RootRouteChildren {
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
   ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
+  ApiPublicReconcilePaymentsRoute: typeof ApiPublicReconcilePaymentsRoute
   ApiPublicRenewalRetriesRoute: typeof ApiPublicRenewalRetriesRoute
 }
 
@@ -415,6 +429,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatePaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/reconcile-payments': {
+      id: '/api/public/reconcile-payments'
+      path: '/api/public/reconcile-payments'
+      fullPath: '/api/public/reconcile-payments'
+      preLoaderRoute: typeof ApiPublicReconcilePaymentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/renewal-retries': {
       id: '/api/public/renewal-retries'
       path: '/api/public/renewal-retries'
@@ -473,6 +494,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
   ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
+  ApiPublicReconcilePaymentsRoute: ApiPublicReconcilePaymentsRoute,
   ApiPublicRenewalRetriesRoute: ApiPublicRenewalRetriesRoute,
 }
 export const routeTree = rootRouteImport
