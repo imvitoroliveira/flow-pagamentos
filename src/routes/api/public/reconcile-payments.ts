@@ -10,10 +10,11 @@ export const Route = createFileRoute("/api/public/reconcile-payments")({
         const denied = await authenticateCronRequest(request);
         if (denied) return denied;
         const { reconcileRecentPayments } = await import("@/lib/payments.server");
-        const { processDueRetries } = await import("@/lib/renewal.server");
+        const { processDueRetries, processCreditSchedules } = await import("@/lib/renewal.server");
         const payments = await reconcileRecentPayments();
         const retries = await processDueRetries();
-        return Response.json({ payments, retries });
+        const schedules = await processCreditSchedules();
+        return Response.json({ payments, retries, schedules });
       },
     },
   },

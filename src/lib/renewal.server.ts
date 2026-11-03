@@ -17,6 +17,15 @@ function panel() {
   return { url: url.replace(/\/$/, ""), key };
 }
 
+export async function panelGet(path: string) {
+  const { url, key } = panel();
+  const res = await fetch(url + path, { headers: { Authorization: `Bearer ${key}` } });
+  const text = await res.text();
+  let json: unknown = null;
+  try { json = JSON.parse(text); } catch { /* not json */ }
+  return { ok: res.ok, status: res.status, json, text };
+}
+
 async function panelPost(path: string, body: unknown) {
   const { url, key } = panel();
   const res = await fetch(url + path, {
@@ -63,9 +72,12 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
   if (!allowed.includes(o.status)) return { ok: o.status === "renewed", skipped: true };
 
   const months = o.plans?.months ?? ({ mensal: 1, trimestral: 3, semestral: 6 } as Record<string, number>)[o.plans?.slug ?? ""] ?? 1;
+  // Fractional ("drip") renewal: activate only 1 month now; remaining months are applied
+  // one by one by processCreditSchedules() shortly before each expiration.
+  const activateNow = months > 1 ? 1 : months;
   let user: PanelUser;
   try {
-    user = await activate(o.panel_username, months);
+    user = await activate(o.panel_username, activateNow);
   } catch (e) {
     const msg = (e as Error).message.slice(0, 500);
     console.error("[renew-customer]", orderId, attempt, msg);
@@ -82,7 +94,15 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
     return { ok: false, error: msg };
   }
 
-  const recorded = await recordRenewed(sb, orderId, allowed, months, attempt, user);
+  if (months > 1) {
+    const exp = user.exp_date ? new Date(user.exp_date * 1000) : null;
+    const { error: schErr } = await sb.from("credit_schedules").upsert({
+      order_id: orderId, panel_username: o.panel_username, total_months: months, months_applied: 1,
+      last_exp_date: exp?.toISOString() ?? null, next_run_at: nextRunFor(exp), status: "active",
+    }, { onConflict: "order_id", ignoreDuplicates: true });
+    if (schErr) console.error("[renew-customer] schedule insert failed", orderId, schErr.message);
+  }
+  const recorded = await recordRenewed(sb, orderId, allowed, activateNow, attempt, user);
   if (!recorded.ok) return { ok: false, error: recorded.error };
   await sb.from("renewal_retries").update({ status: "cancelled" }).eq("order_id", orderId).eq("status", "pending");
   return { ok: true };
@@ -137,4 +157,100 @@ export async function processDueRetries() {
     processed++;
   }
   return { processed };
+}
+
+// ─── Fractional credits ("Futuros") ──────────────────────────────────────
+export const DRIP_LEAD_DAYS = 2;
+const FAIL_RETRY_MIN = 30;
+
+/** Next automatic activation: DRIP_LEAD_DAYS before expiration (or now if unknown/past). */
+export function nextRunFor(exp: Date | null): string {
+  const now = Date.now();
+  if (!exp) return new Date(now).toISOString();
+  return new Date(Math.max(now, exp.getTime() - DRIP_LEAD_DAYS * 86_400_000)).toISOString();
+}
+
+/** Applies 1 month to a schedule. Claims the row first so concurrent runs can't double-apply. */
+export async function applyScheduleMonth(id: string, opts: { force?: boolean } = {}) {
+  const sb = await db();
+  const { data: s } = await sb.from("credit_schedules").select("*").eq("id", id).maybeSingle();
+  if (!s) return { ok: false, error: "Agendamento não encontrado" };
+  if (s.status !== "active" && !(opts.force && s.status === "paused")) return { ok: false, error: "Agendamento não está ativo" };
+  if (s.months_applied >= s.total_months) {
+    await sb.from("credit_schedules").update({ status: "done", next_run_at: null }).eq("id", id);
+    return { ok: true };
+  }
+  const { data: claimed } = await sb.from("credit_schedules").update({ status: "running", updated_at: new Date().toISOString() })
+    .eq("id", id).eq("months_applied", s.months_applied).in("status", ["active", "paused"]).select("id");
+  if (!claimed?.length) return { ok: false, error: "Já está sendo processado" };
+  try {
+    const user = await activate(s.panel_username, 1);
+    const applied = s.months_applied + 1;
+    const exp = user.exp_date ? new Date(user.exp_date * 1000) : null;
+    const done = applied >= s.total_months;
+    await sb.from("credit_schedules").update({
+      months_applied: applied, last_exp_date: exp?.toISOString() ?? s.last_exp_date,
+      next_run_at: done ? null : nextRunFor(exp), status: done ? "done" : "active",
+      last_error: null, alerted_at: null, updated_at: new Date().toISOString(),
+    }).eq("id", id);
+    await sb.from("events").insert({ order_id: s.order_id, type: "renewed", metadata: { months: 1, drip: true, month: applied, of: s.total_months, exp_date: user.exp_date ?? null } });
+    return { ok: true };
+  } catch (e) {
+    const msg = (e as Error).message.slice(0, 500);
+    await sb.from("credit_schedules").update({
+      status: "active", last_error: msg, updated_at: new Date().toISOString(),
+      next_run_at: new Date(Date.now() + FAIL_RETRY_MIN * 60_000).toISOString(),
+    }).eq("id", id);
+    if (!s.alerted_at) {
+      const chat = process.env["TELEGRAM_ADMIN_CHAT_ID"] ?? "";
+      const esc = (x: string) => x.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
+      try {
+        await sendTelegram(chat, `⚠️ <b>Renovação agendada falhou</b>\nUsuário: <code>${esc(s.panel_username)}</code>\nMês ${s.months_applied + 1} de ${s.total_months}\nErro: ${esc(msg)}\nNova tentativa a cada ${FAIL_RETRY_MIN} min.`);
+      } catch (err) { console.error("telegram drip alert failed", err); }
+      await sb.from("credit_schedules").update({ alerted_at: new Date().toISOString() }).eq("id", id);
+    }
+    return { ok: false, error: msg };
+  }
+}
+
+/** Runs every due schedule (called by the reconcile cron). */
+export async function processCreditSchedules() {
+  const sb = await db();
+  // recover rows stuck in "running" for > 10 min
+  await sb.from("credit_schedules").update({ status: "active" }).eq("status", "running").lt("updated_at", new Date(Date.now() - 600_000).toISOString());
+  const { data: due } = await sb.from("credit_schedules").select("id").eq("status", "active").lte("next_run_at", new Date().toISOString()).limit(20);
+  let applied = 0, failed = 0;
+  for (const r of due ?? []) { const res = await applyScheduleMonth(r.id); if (res.ok) applied++; else failed++; }
+  return { applied, failed };
+}
+
+// ─── Panel client list ("Clientes") ──────────────────────────────────────
+type ReportItem = { i: string; u: string; p: string; n?: string | null; d: string; l: string; e: string; c: string; o?: string | null; t: string; b: string };
+const spDate = (s?: string | null) => (s && /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s) ? new Date(s.replace(" ", "T") + "-03:00").toISOString() : null);
+
+/** Pulls every client from the panel into panel_clients (panel limit: 1 request / 60s). */
+export async function syncPanelClients() {
+  const r = await panelGet("/report/allusers");
+  if (r.status === 429) return { ok: false as const, error: "O painel permite 1 sincronização por minuto. Aguarde e tente de novo." };
+  if (!r.ok || !Array.isArray(r.json)) return { ok: false as const, error: `Painel respondeu ${r.status}.` };
+  const now = new Date().toISOString();
+  const rows = (r.json as ReportItem[]).map((x) => ({
+    panel_id: String(x.i), username: x.u, password: x.p ?? null, notes: x.n ?? null,
+    phone: (x.o ?? x.n ?? "").replace(/\D/g, "") || null,
+    expires_at: spDate(x.e), last_seen_at: spDate(x.l), registered_at: spDate(x.d),
+    status: x.t ?? null, blocked: String(x.b).toLowerCase() === "yes", connections: Number(x.c) || null, synced_at: now,
+  }));
+  const sb = await db();
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await sb.from("panel_clients").upsert(rows.slice(i, i + 500), { onConflict: "panel_id" });
+    if (error) return { ok: false as const, error: "Não foi possível salvar os clientes." };
+  }
+  return { ok: true as const, count: rows.length };
+}
+
+export async function getResellerCredits(): Promise<number | null> {
+  const r = await panelGet("/reseller/me");
+  if (!r.ok) return null;
+  const c = (r.json as { credits?: number } | null)?.credits;
+  return typeof c === "number" ? c : null;
 }
