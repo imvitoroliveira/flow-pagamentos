@@ -43,6 +43,13 @@
       "when": 1793554931242,
       "tag": "0005_seller_access_links",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793666149101,
+      "tag": "0006_harden_functions",
+      "breakpoints": true
     }
   ]
 }
