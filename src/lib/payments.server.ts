@@ -220,3 +220,29 @@ export async function notifySeller(orderId: string) {
 export async function sendConversionEvents(orderId: string) {
   console.log("[send-conversion-events] stub", orderId);
 }
+
+/**
+ * Backstop for missed webhooks: asks AbacatePay about every recent PIX that is not settled yet
+ * (pending, or cancelled/expired locally) and settles the ones it reports as PAID.
+ */
+export async function reconcileRecentPayments() {
+  const key = process.env["ABACATEPAY_API_KEY"];
+  if (!key) return { checked: 0, settled: 0, expired: 0 };
+  const sb = await db();
+  const since = new Date(Date.now() - 48 * 3600_000).toISOString();
+  const { data: rows } = await sb.from("orders").select("id, status, abacate_id")
+    .in("status", ["pending", "cancelled", "expired"]).not("abacate_id", "is", null)
+    .gte("created_at", since).order("created_at", { ascending: false }).limit(50);
+  let settled = 0, expired = 0;
+  for (const o of rows ?? []) {
+    const res = await fetch(`${ABACATE_API_BASE}/v2/transparents/check?id=${encodeURIComponent(o.abacate_id!)}`, {
+      headers: { Authorization: `Bearer ${key}` },
+    }).catch(() => null);
+    if (!res?.ok) continue;
+    const json = (await res.json().catch(() => null)) as { data?: { status?: string } } | null;
+    const st = json?.data?.status;
+    if (st === "PAID") { const r = await settlePaidOrder(o.id); if (!r.alreadyProcessed) settled++; }
+    else if (st === "EXPIRED" && o.status === "pending") { await sb.from("orders").update({ status: "expired" }).eq("id", o.id).eq("status", "pending"); expired++; }
+  }
+  return { checked: rows?.length ?? 0, settled, expired };
+}
