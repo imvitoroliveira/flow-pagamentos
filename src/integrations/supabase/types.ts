@@ -207,6 +207,59 @@ export type Database = {
           },
         ]
       }
+      credit_schedules: {
+        Row: {
+          alerted_at: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          last_exp_date: string | null
+          months_applied: number
+          next_run_at: string | null
+          order_id: string
+          panel_username: string
+          status: string
+          total_months: number
+          updated_at: string
+        }
+        Insert: {
+          alerted_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_exp_date?: string | null
+          months_applied?: number
+          next_run_at?: string | null
+          order_id: string
+          panel_username: string
+          status?: string
+          total_months: number
+          updated_at?: string
+        }
+        Update: {
+          alerted_at?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          last_exp_date?: string | null
+          months_applied?: number
+          next_run_at?: string | null
+          order_id?: string
+          panel_username?: string
+          status?: string
+          total_months?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_schedules_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
@@ -364,6 +417,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      panel_clients: {
+        Row: {
+          blocked: boolean
+          connections: number | null
+          expires_at: string | null
+          last_seen_at: string | null
+          notes: string | null
+          panel_id: string
+          password: string | null
+          phone: string | null
+          registered_at: string | null
+          status: string | null
+          synced_at: string
+          username: string
+        }
+        Insert: {
+          blocked?: boolean
+          connections?: number | null
+          expires_at?: string | null
+          last_seen_at?: string | null
+          notes?: string | null
+          panel_id: string
+          password?: string | null
+          phone?: string | null
+          registered_at?: string | null
+          status?: string | null
+          synced_at?: string
+          username: string
+        }
+        Update: {
+          blocked?: boolean
+          connections?: number | null
+          expires_at?: string | null
+          last_seen_at?: string | null
+          notes?: string | null
+          panel_id?: string
+          password?: string | null
+          phone?: string | null
+          registered_at?: string | null
+          status?: string | null
+          synced_at?: string
+          username?: string
+        }
+        Relationships: []
       }
       plans: {
         Row: {
