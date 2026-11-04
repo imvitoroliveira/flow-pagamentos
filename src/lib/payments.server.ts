@@ -1,6 +1,7 @@
 // Server-only payment core shared by server routes (/api/public/*) and server functions.
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
+import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "./reconcile-policy";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
 // The API key version must match the endpoint ("API key version mismatch" otherwise).
@@ -135,10 +136,15 @@ export async function createPayment(input: CreatePaymentInput) {
   };
 }
 
+// The checkout screen polls this often; the webhook is the primary signal, so AbacatePay is only asked
+// directly at most once per EXTERNAL_CHECK_MIN_MS per order (per server instance).
+const EXTERNAL_CHECK_MIN_MS = 15_000;
+const mayCheckAbacate = createThrottle(EXTERNAL_CHECK_MIN_MS);
+
 export async function getOrderPublicStatus(id: string) {
   const sb = await db();
   const { data: pending } = await sb.from("orders").select("status, abacate_id").eq("id", id).maybeSingle();
-  if (pending?.status === "pending" && pending.abacate_id) await reconcilePendingPayment(id, pending.abacate_id);
+  if (pending?.status === "pending" && pending.abacate_id && mayCheckAbacate(id, Date.now())) await reconcilePendingPayment(id, pending.abacate_id);
   const { data: o } = await sb
     .from("orders")
     .select("status, paid_at, renewed_at, plans(name, months), campaigns(destination_whatsapp)")
@@ -311,20 +317,31 @@ export async function reconcileRecentPayments() {
   const key = process.env["ABACATEPAY_API_KEY"];
   if (!key) return { checked: 0, settled: 0, expired: 0 };
   const sb = await db();
-  const since = new Date(Date.now() - 48 * 3600_000).toISOString();
-  const { data: rows } = await sb.from("orders").select("id, status, abacate_id")
-    .in("status", ["pending", "cancelled", "expired"]).not("abacate_id", "is", null)
-    .gte("created_at", since).order("created_at", { ascending: false }).limit(50);
+  const now = Date.now();
+  // Pending PIX are checked on every run. Orders already expired/cancelled locally cannot be paid any more,
+  // so they are only re-checked for a few hours, with backoff (see reconcile-policy.ts), instead of 48 h of every-2-min calls.
+  const [pending, closed] = await Promise.all([
+    sb.from("orders").select("id, status, abacate_id, created_at")
+      .eq("status", "pending").not("abacate_id", "is", null)
+      .gte("created_at", new Date(now - 48 * 3600_000).toISOString()).order("created_at", { ascending: false }).limit(50),
+    sb.from("orders").select("id, status, abacate_id, created_at")
+      .in("status", ["cancelled", "expired"]).not("abacate_id", "is", null)
+      .gte("created_at", new Date(now - CLOSED_RECHECK_WINDOW_MS).toISOString()).order("created_at", { ascending: false }).limit(50),
+  ]);
+  const rows = [
+    ...(pending.data ?? []),
+    ...(closed.data ?? []).filter((o) => shouldRecheckClosedOrder(now - new Date(o.created_at).getTime(), now)),
+  ];
   let settled = 0, expired = 0;
-  for (const o of rows ?? []) {
+  await mapLimit(rows, 5, async (o) => {
     const res = await fetch(`${ABACATE_API_BASE}/v2/transparents/check?id=${encodeURIComponent(o.abacate_id!)}`, {
       headers: { Authorization: `Bearer ${key}` },
     }).catch(() => null);
-    if (!res?.ok) continue;
+    if (!res?.ok) return;
     const json = (await res.json().catch(() => null)) as { data?: { status?: string } } | null;
     const st = json?.data?.status;
     if (st === "PAID") { const r = await settlePaidOrder(o.id); if (!r.alreadyProcessed) settled++; }
     else if (st === "EXPIRED" && o.status === "pending") { await sb.from("orders").update({ status: "expired" }).eq("id", o.id).eq("status", "pending"); expired++; }
-  }
-  return { checked: rows?.length ?? 0, settled, expired };
+  });
+  return { checked: rows.length, settled, expired };
 }

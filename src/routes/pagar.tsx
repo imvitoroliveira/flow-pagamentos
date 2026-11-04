@@ -283,7 +283,7 @@ function PixStep({ pix, user, onRestart }: { pix: Pix; user: string; onRestart: 
     queryFn: () => fetchStatus({ data: { id: pix.order_id } }),
     refetchInterval: (q) => {
       const s = q.state.data?.status;
-      return s === "paid" || s === "renewed" || s === "renewal_failed" || left === 0 ? false : 4000;
+      return s === "paid" || s === "renewed" || s === "renewal_failed" || left === 0 ? false : 6000;
     },
   });
   const qrSrc = useMemo(() => (pix.qr.startsWith("data:") ? pix.qr : `data:image/png;base64,${pix.qr}`), [pix.qr]);
