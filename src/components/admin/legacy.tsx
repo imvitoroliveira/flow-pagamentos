@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { PUBLIC_SITE_URL } from "@/lib/site-url";
 
 // Legacy admin sections (moved unchanged; to be rewritten in later stages).
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -154,7 +155,7 @@ export function Campaigns() {
     ["utm_source", "utm_source"], ["utm_medium", "utm_medium"], ["utm_campaign", "utm_campaign"], ["utm_term", "utm_term"], ["utm_content", "utm_content"],
     ["meta_pixel_id", "Meta Pixel ID"], ["tiktok_pixel_id", "TikTok Pixel ID"],
   ];
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = PUBLIC_SITE_URL;
   return (
     <div className="space-y-4">
       <form onSubmit={add} className="grid gap-2 rounded-2xl border bg-card p-4 md:grid-cols-3">

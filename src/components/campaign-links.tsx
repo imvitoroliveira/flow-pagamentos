@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { publicUrl } from "@/lib/site-url";
 
 /** Payment link for a named link inside a campaign: registers the click, then opens /pagar. */
 export function paymentLinkOf(slug: string, code: string) {
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  return `${origin}/r/${slug}?l=${code}&pagar=1`;
+  return publicUrl(`/r/${slug}?l=${code}&pagar=1`);
 }
 
 function makeCode() {

@@ -24,6 +24,7 @@ import { saveCampaign, setCampaignActive, deleteCampaign } from "@/lib/admin-act
 import {
   campaignSchema, extractMetaPixel, extractTiktokPixel, normalizeBrPhone, slugify, UTM_SOURCES, type CampaignInput,
 } from "@/lib/admin-schemas";
+import { publicUrl } from "@/lib/site-url";
 import { useAdminFilters } from "./admin";
 import { brl, Card, dtSP, Empty, ErrorState, num, pct, ratio, SP_TZ, STATUS, useRpc, type Breakdown, type Series } from "./admin.index";
 
@@ -39,8 +40,7 @@ type Campaign = {
   sellers: { name: string } | null;
 };
 
-const origin = () => (typeof window !== "undefined" ? window.location.origin : "");
-const linkOf = (slug: string) => `${origin()}/r/${slug}`;
+const linkOf = (slug: string) => publicUrl(`/r/${slug}`);
 function copy(text: string, msg = "Copiado") { navigator.clipboard.writeText(text).then(() => toast.success(msg), () => toast.error("Não foi possível copiar")); }
 
 function useCampaigns() {
