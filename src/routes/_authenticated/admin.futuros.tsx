@@ -109,7 +109,7 @@ function FuturesPage() {
   );
 }
 
-function Kpi({ label, value, hint, warn }: { label: string; value: string | null; hint?: string; warn?: boolean }) {
+function Kpi({ label, value, hint, warn }: { label: string; value: string | null; hint?: string | undefined; warn?: boolean }) {
   return (
     <Card className="p-4">
       <div className="text-sm text-muted-foreground">{label}</div>
