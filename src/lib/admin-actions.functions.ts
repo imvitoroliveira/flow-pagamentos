@@ -248,3 +248,41 @@ export const revokeAdmin = createServerFn({ method: "POST" })
     await logAdminAction(ctx, { action: "admin.revoke", entity: "user", entity_id: data.user_id });
     return { ok: true as const };
   });
+
+// ─── panel clients & fractional credits ──────────────────────────────────
+export const syncClients = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await guard(context);
+    const { syncPanelClients } = await import("./renewal.server");
+    try { return await syncPanelClients(); } catch (e) { return fail((e as Error).message); }
+  });
+
+export const getPanelCredits = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await guard(context);
+    const { getResellerCredits } = await import("./renewal.server");
+    try { return { credits: await getResellerCredits() }; } catch { return { credits: null }; }
+  });
+
+export const scheduleAction = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid(), action: z.enum(["run", "pause", "resume", "cancel"]) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const r = await import("./renewal.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let res: { ok: boolean; error?: string } = { ok: true };
+    if (data.action === "run") res = await r.applyScheduleMonth(data.id, { force: true });
+    else {
+      const status = data.action === "pause" ? "paused" : data.action === "cancel" ? "cancelled" : "active";
+      const from = data.action === "resume" ? ["paused"] : ["active", "paused"];
+      const { data: rows, error } = await supabaseAdmin.from("credit_schedules")
+        .update({ status, updated_at: new Date().toISOString(), ...(status === "active" ? { next_run_at: new Date().toISOString() } : {}) })
+        .eq("id", data.id).in("status", from).select("id");
+      if (error || !rows?.length) res = { ok: false, error: "Não foi possível atualizar o agendamento." };
+    }
+    await logAdminAction(ctx, { action: `credit_schedule.${data.action}`, entity: "credit_schedule", entity_id: data.id, details: { ok: res.ok, error: res.error ?? null } });
+    return res.ok ? { ok: true as const } : fail(res.error ?? "Falhou");
+  });
