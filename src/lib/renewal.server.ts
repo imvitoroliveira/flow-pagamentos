@@ -2,13 +2,23 @@
 //   POST /user/activation { username, months }  → renews (months: 1,2,3,4,5,6,12)
 //   POST /user/search     { username }          → list of matching users (partial match)
 import { sendTelegram } from "./checkout.server";
+import { nextRunFor, scheduleStateAfterApply } from "./drip-schedule";
 
 export const RETRY_DELAYS_MIN = [1, 5, 15];
+const FAIL_RETRY_MIN = 30;
+const LOW_CREDITS_THRESHOLD = 3;
+const CREDIT_ALERT_COOLDOWN_MS = 86_400_000;
 
 async function db() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
+
+function adminChatId() {
+  return process.env["TELEGRAM_ADMIN_CHAT_ID"] || process.env["ADMIN_TELEGRAM_CHAT_ID"] || "-1003741340423";
+}
+
+const escapeHtml = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
 
 function panel() {
   const url = process.env["RENEWAL_API_URL"];
@@ -133,11 +143,9 @@ async function recordRenewed(
 
 async function alertAdmin(orderId: string, username: string, error: string) {
   const sb = await db();
-  const chat = process.env["TELEGRAM_ADMIN_CHAT_ID"] ?? "";
-  const esc = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
   let sent = false;
   try {
-    sent = await sendTelegram(chat, `⚠️ <b>Renovação falhou (3 tentativas)</b>\nPedido: <code>${orderId}</code>\nUsuário: <code>${esc(username)}</code>\nErro: ${esc(error)}`);
+    sent = await sendTelegram(adminChatId(), `⚠️ <b>Renovação falhou (3 tentativas)</b>\nPedido: <code>${orderId}</code>\nUsuário: <code>${escapeHtml(username)}</code>\nErro: ${escapeHtml(error)}`);
   } catch (e) { console.error("telegram alert failed", e); }
   await sb.from("notifications_log").insert({ order_id: orderId, channel: "telegram_admin", status: sent ? "sent" : "failed" });
 }
@@ -160,15 +168,6 @@ export async function processDueRetries() {
 }
 
 // ─── Fractional credits ("Futuros") ──────────────────────────────────────
-export const DRIP_LEAD_DAYS = 2;
-const FAIL_RETRY_MIN = 30;
-
-/** Next automatic activation: DRIP_LEAD_DAYS before expiration (or now if unknown/past). */
-export function nextRunFor(exp: Date | null): string {
-  const now = Date.now();
-  if (!exp) return new Date(now).toISOString();
-  return new Date(Math.max(now, exp.getTime() - DRIP_LEAD_DAYS * 86_400_000)).toISOString();
-}
 
 /** Applies 1 month to a schedule. Claims the row first so concurrent runs can't double-apply. */
 export async function applyScheduleMonth(id: string, opts: { force?: boolean } = {}) {
@@ -185,15 +184,13 @@ export async function applyScheduleMonth(id: string, opts: { force?: boolean } =
   if (!claimed?.length) return { ok: false, error: "Já está sendo processado" };
   try {
     const user = await activate(s.panel_username, 1);
-    const applied = s.months_applied + 1;
     const exp = user.exp_date ? new Date(user.exp_date * 1000) : null;
-    const done = applied >= s.total_months;
+    const next = scheduleStateAfterApply(s, exp);
     await sb.from("credit_schedules").update({
-      months_applied: applied, last_exp_date: exp?.toISOString() ?? s.last_exp_date,
-      next_run_at: done ? null : nextRunFor(exp), status: done ? "done" : "active",
+      ...next, last_exp_date: exp?.toISOString() ?? s.last_exp_date,
       last_error: null, alerted_at: null, updated_at: new Date().toISOString(),
     }).eq("id", id);
-    await sb.from("events").insert({ order_id: s.order_id, type: "renewed", metadata: { months: 1, drip: true, month: applied, of: s.total_months, exp_date: user.exp_date ?? null } });
+    await sb.from("events").insert({ order_id: s.order_id, type: "renewed", metadata: { months: 1, drip: true, month: next.months_applied, of: s.total_months, exp_date: user.exp_date ?? null } });
     return { ok: true };
   } catch (e) {
     const msg = (e as Error).message.slice(0, 500);
@@ -202,11 +199,11 @@ export async function applyScheduleMonth(id: string, opts: { force?: boolean } =
       next_run_at: new Date(Date.now() + FAIL_RETRY_MIN * 60_000).toISOString(),
     }).eq("id", id);
     if (!s.alerted_at) {
-      const chat = process.env["TELEGRAM_ADMIN_CHAT_ID"] ?? "";
-      const esc = (x: string) => x.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
+      let sent = false;
       try {
-        await sendTelegram(chat, `⚠️ <b>Renovação agendada falhou</b>\nUsuário: <code>${esc(s.panel_username)}</code>\nMês ${s.months_applied + 1} de ${s.total_months}\nErro: ${esc(msg)}\nNova tentativa a cada ${FAIL_RETRY_MIN} min.`);
+        sent = await sendTelegram(adminChatId(), `⚠️ <b>Renovação agendada falhou</b>\nUsuário: <code>${escapeHtml(s.panel_username)}</code>\nParcela: Mês ${s.months_applied + 1} de ${s.total_months}\nErro da API: ${escapeHtml(msg)}\nNova tentativa a cada ${FAIL_RETRY_MIN} min.`);
       } catch (err) { console.error("telegram drip alert failed", err); }
+      await sb.from("notifications_log").insert({ order_id: s.order_id, channel: "telegram_admin", status: sent ? "sent" : "failed" });
       await sb.from("credit_schedules").update({ alerted_at: new Date().toISOString() }).eq("id", id);
     }
     return { ok: false, error: msg };
@@ -221,7 +218,29 @@ export async function processCreditSchedules() {
   const { data: due } = await sb.from("credit_schedules").select("id").eq("status", "active").lte("next_run_at", new Date().toISOString()).limit(20);
   let applied = 0, failed = 0;
   for (const r of due ?? []) { const res = await applyScheduleMonth(r.id); if (res.ok) applied++; else failed++; }
+  await checkLowCreditsAlert();
   return { applied, failed };
+}
+
+/** Warns the admin (at most once a day) when free panel credits are low or upcoming renewals exceed them. */
+export async function checkLowCreditsAlert() {
+  try {
+    const credits = await getResellerCredits();
+    if (credits === null) return;
+    const sb = await db();
+    const { count } = await sb.from("credit_schedules").select("id", { count: "exact", head: true })
+      .eq("status", "active").lte("next_run_at", new Date(Date.now() + 3 * 86_400_000).toISOString());
+    const upcoming = count ?? 0;
+    if (credits >= LOW_CREDITS_THRESHOLD && upcoming <= credits) return;
+    const { data: recent } = await sb.from("notifications_log").select("id")
+      .eq("channel", "telegram_credit_alert").eq("status", "sent")
+      .gte("created_at", new Date(Date.now() - CREDIT_ALERT_COOLDOWN_MS).toISOString()).limit(1);
+    if (recent?.length) return;
+    const sent = await sendTelegram(adminChatId(), `⚠️ <b>Atenção: Saldo de créditos NATV baixo</b>\nCréditos livres: ${credits}\nRenovações previstas em 3 dias: ${upcoming}\nRecarregue no painel para evitar falhas.`);
+    await sb.from("notifications_log").insert({ channel: "telegram_credit_alert", status: sent ? "sent" : "failed" });
+  } catch (e) {
+    console.error("[low-credits-alert]", e);
+  }
 }
 
 // ─── Panel client list ("Clientes") ──────────────────────────────────────

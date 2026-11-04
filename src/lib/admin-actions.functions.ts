@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { campaignSchema, sellerSchema } from "./admin-schemas";
+import { nextRunFor } from "./drip-schedule";
 
 type Ctx = Parameters<typeof import("./admin.server").assertAdmin>[0];
 async function guard(context: unknown) {
@@ -278,8 +279,13 @@ export const scheduleAction = createServerFn({ method: "POST" })
     else {
       const status = data.action === "pause" ? "paused" : data.action === "cancel" ? "cancelled" : "active";
       const from = data.action === "resume" ? ["paused"] : ["active", "paused"];
+      let nextRunAt: string | undefined;
+      if (data.action === "resume") {
+        const { data: s } = await supabaseAdmin.from("credit_schedules").select("last_exp_date").eq("id", data.id).maybeSingle();
+        nextRunAt = nextRunFor(s?.last_exp_date ? new Date(s.last_exp_date) : null);
+      }
       const { data: rows, error } = await supabaseAdmin.from("credit_schedules")
-        .update({ status, updated_at: new Date().toISOString(), ...(status === "active" ? { next_run_at: new Date().toISOString() } : {}) })
+        .update({ status, updated_at: new Date().toISOString(), ...(nextRunAt ? { next_run_at: nextRunAt } : {}) })
         .eq("id", data.id).in("status", from).select("id");
       if (error || !rows?.length) res = { ok: false, error: "Não foi possível atualizar o agendamento." };
     }

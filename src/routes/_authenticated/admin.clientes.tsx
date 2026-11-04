@@ -50,6 +50,16 @@ function ClientsPage() {
     },
   });
 
+  const schedQuery = useQuery({
+    queryKey: ["credit_schedules_open"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("credit_schedules").select("panel_username, months_applied, total_months").in("status", ["active", "paused"]);
+      if (error) throw error;
+      return data;
+    },
+  });
+  const futureByUser = useMemo(() => new Map((schedQuery.data ?? []).map((s) => [s.panel_username.toLowerCase(), s])), [schedQuery.data]);
+
   async function doSync() {
     setSyncing(true);
     try {
@@ -120,7 +130,7 @@ function ClientsPage() {
                       <td className="p-3 font-medium"><CopyText value={c.username} label="usuário" /></td>
                       <td className="p-3"><Secret value={c.password} /></td>
                       <td className="p-3 whitespace-nowrap">{fmtDate(c.expires_at)}</td>
-                      <td className="p-3"><div className="flex flex-wrap gap-1"><Tone tone={t.tone}>{t.label}</Tone>{c.blocked && <Tone tone="bad">Bloqueado</Tone>}</div></td>
+                      <td className="p-3"><div className="flex flex-wrap gap-1"><Tone tone={t.tone}>{t.label}</Tone>{c.blocked && <Tone tone="bad">Bloqueado</Tone>}<FutureBadge schedule={futureByUser.get(c.username.toLowerCase())} /></div></td>
                       <td className="p-3">{c.connections ?? "—"}</td>
                       <td className="p-3">{c.phone ?? "—"}</td>
                       <td className="p-3 whitespace-nowrap text-muted-foreground">{fmtDate(c.last_seen_at)}</td>
@@ -140,6 +150,7 @@ function ClientsPage() {
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Vencimento</span><span>{fmtDate(c.expires_at)}</span></div>
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Telas / Telefone</span><span>{c.connections ?? "—"} · {c.phone ?? "—"}</span></div>
                   {c.blocked && <Tone tone="bad">Bloqueado</Tone>}
+                  <FutureBadge schedule={futureByUser.get(c.username.toLowerCase())} />
                 </Card>
               );
             })}
@@ -147,6 +158,15 @@ function ClientsPage() {
         </>
       )}
     </div>
+  );
+}
+
+function FutureBadge({ schedule }: { schedule: { months_applied: number; total_months: number } | undefined }) {
+  if (!schedule) return null;
+  return (
+    <span className="inline-flex items-center rounded-full border border-teal-600/30 bg-teal-500/15 px-2.5 py-0.5 text-xs font-medium text-teal-800 dark:text-teal-200">
+      Futuro: Mês {schedule.months_applied}/{schedule.total_months}
+    </span>
   );
 }
 
