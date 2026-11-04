@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRIP_LEAD_DAYS, nextRunFor, remainingMonths, scheduleStateAfterApply } from "@/lib/drip-schedule";
+import { DRIP_LEAD_DAYS, looksApplied, nextRunFor, remainingMonths, scheduleStateAfterApply } from "@/lib/drip-schedule";
 
 const DAY = 86_400_000;
 
@@ -44,5 +44,27 @@ describe("finalização do ciclo", () => {
     expect(next.status).toBe("active");
     expect(next.months_applied).toBe(2);
     expect(new Date(next.next_run_at!).getTime()).toBe(exp.getTime() - DRIP_LEAD_DAYS * DAY);
+  });
+});
+
+describe("looksApplied (resposta incerta do painel)", () => {
+  const start = Date.now();
+  const before = new Date(start + 2 * DAY); // vencimento conhecido antes da tentativa
+  it("reconhece que o mês foi aplicado quando o vencimento avançou ~1 mês", () => {
+    expect(looksApplied({ baselineExp: before, startedAt: start, months: 1, currentExp: new Date(before.getTime() + 30 * DAY) })).toBe(true);
+  });
+  it("não considera aplicado se o vencimento não mudou", () => {
+    expect(looksApplied({ baselineExp: before, startedAt: start, months: 1, currentExp: before })).toBe(false);
+  });
+  it("não considera aplicado se avançou menos de 25 dias", () => {
+    expect(looksApplied({ baselineExp: before, startedAt: start, months: 1, currentExp: new Date(before.getTime() + 10 * DAY) })).toBe(false);
+  });
+  it("cliente vencido recomeça a contar de agora", () => {
+    const expired = new Date(start - 20 * DAY);
+    expect(looksApplied({ baselineExp: expired, startedAt: start, months: 1, currentExp: new Date(start + 30 * DAY) })).toBe(true);
+    expect(looksApplied({ baselineExp: expired, startedAt: start, months: 1, currentExp: new Date(start + 5 * DAY) })).toBe(false);
+  });
+  it("sem vencimento no painel nunca conta como aplicado", () => {
+    expect(looksApplied({ baselineExp: before, startedAt: start, months: 1, currentExp: null })).toBe(false);
   });
 });

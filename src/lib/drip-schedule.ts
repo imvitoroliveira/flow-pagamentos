@@ -21,3 +21,17 @@ export function scheduleStateAfterApply(s: { total_months: number; months_applie
     next_run_at: done ? null : nextRunFor(exp),
   };
 }
+
+/** A panel month adds ~28-31 days; anything above this per month proves an activation really happened. */
+export const MIN_DAYS_PER_MONTH = 25;
+
+/**
+ * After an uncertain panel response (timeout / 5xx / crash), tells whether the activation was in fact
+ * applied: the panel expiration must have moved at least `months` months past where it stood before the
+ * attempt (the later of the expiration we knew and the attempt start, since expired users restart from "now").
+ */
+export function looksApplied(a: { baselineExp: Date | null; startedAt: number; months: number; currentExp: Date | null }): boolean {
+  if (!a.currentExp) return false;
+  const base = Math.max(a.baselineExp?.getTime() ?? 0, a.startedAt);
+  return a.currentExp.getTime() >= base + a.months * MIN_DAYS_PER_MONTH * 86_400_000;
+}
