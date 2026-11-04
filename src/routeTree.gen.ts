@@ -22,6 +22,7 @@ import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
 import { Route as AuthenticatedAdminFunilRouteImport } from './routes/_authenticated/admin.funil'
+import { Route as AuthenticatedAdminFuturosRouteImport } from './routes/_authenticated/admin.futuros'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminPedidosRouteImport } from './routes/_authenticated/admin.pedidos'
 import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_authenticated/admin.vendedores'
@@ -98,6 +99,12 @@ const AuthenticatedAdminFunilRoute = AuthenticatedAdminFunilRouteImport.update({
   path: '/funil',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminFuturosRoute =
+  AuthenticatedAdminFuturosRouteImport.update({
+    id: '/futuros',
+    path: '/futuros',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
@@ -156,6 +163,7 @@ export interface FileRoutesByFullPath {
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
@@ -177,6 +185,7 @@ export interface FileRoutesByTo {
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
@@ -201,6 +210,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/funil': typeof AuthenticatedAdminFunilRoute
+  '/_authenticated/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/_authenticated/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/funil'
+    | '/admin/futuros'
     | '/admin/logs'
     | '/admin/pedidos'
     | '/admin/vendedores'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/admin/clientes'
     | '/admin/configuracoes'
     | '/admin/funil'
+    | '/admin/futuros'
     | '/admin/logs'
     | '/admin/pedidos'
     | '/admin/vendedores'
@@ -269,6 +281,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/clientes'
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/funil'
+    | '/_authenticated/admin/futuros'
     | '/_authenticated/admin/logs'
     | '/_authenticated/admin/pedidos'
     | '/_authenticated/admin/vendedores'
@@ -387,6 +400,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFunilRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/futuros': {
+      id: '/_authenticated/admin/futuros'
+      path: '/futuros'
+      fullPath: '/admin/futuros'
+      preLoaderRoute: typeof AuthenticatedAdminFuturosRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/logs': {
       id: '/_authenticated/admin/logs'
       path: '/logs'
@@ -451,6 +471,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminFunilRoute: typeof AuthenticatedAdminFunilRoute
+  AuthenticatedAdminFuturosRoute: typeof AuthenticatedAdminFuturosRoute
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedAdminPedidosRoute: typeof AuthenticatedAdminPedidosRoute
   AuthenticatedAdminVendedoresRoute: typeof AuthenticatedAdminVendedoresRoute
@@ -462,6 +483,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminFunilRoute: AuthenticatedAdminFunilRoute,
+  AuthenticatedAdminFuturosRoute: AuthenticatedAdminFuturosRoute,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
   AuthenticatedAdminPedidosRoute: AuthenticatedAdminPedidosRoute,
   AuthenticatedAdminVendedoresRoute: AuthenticatedAdminVendedoresRoute,
