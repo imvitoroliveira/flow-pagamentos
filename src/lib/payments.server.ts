@@ -193,11 +193,12 @@ export async function settlePaidOrder(orderId: string) {
   if (!order) return { alreadyProcessed: true as const, failed: [] as string[] };
 
   await sb.from("events").insert({ order_id: order.id, ref_code: order.ref_code, type: "paid", metadata: { event_id: order.event_id } });
-  const [renewal, notify, conversions] = await Promise.allSettled([renewCustomer(order.id), notifySeller(order.id), sendConversionEvents(order.id)]);
+  const [renewal, conversions] = await Promise.allSettled([renewCustomer(order.id), sendConversionEvents(order.id)]);
+  // Runs after the renewal so the expiry shown to the admin already includes the new activation.
+  await notifyAdminOfSale(order.id);
   const failed: string[] = [];
   if (renewal.status === "rejected") failed.push(String(renewal.reason));
   else if (!renewal.value.ok) failed.push("error" in renewal.value && renewal.value.error ? renewal.value.error : "renovação não concluída");
-  if (notify.status === "rejected") failed.push(String(notify.reason));
   if (conversions.status === "rejected") failed.push(String(conversions.reason));
   return { alreadyProcessed: false as const, failed };
 }
@@ -214,8 +215,89 @@ async function reconcilePendingPayment(orderId: string, abacateId: string) {
   if (json?.data?.status === "PAID") await settlePaidOrder(orderId);
 }
 
-export async function notifySeller(orderId: string) {
-  console.log("[notify-seller] stub", orderId);
+const SAO_PAULO_DATE = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+const BRL = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+function formatSaoPaulo(date: Date) {
+  const parts = Object.fromEntries(SAO_PAULO_DATE.formatToParts(date).map((p) => [p.type, p.value]));
+  return `${parts["day"]}/${parts["month"]}/${parts["year"]} ${parts["hour"]}:${parts["minute"]}`;
+}
+
+const escapeHtml = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
+
+export async function notifyAdminOfSale(orderId: string) {
+  try {
+    const sb = await db();
+    const { data: order } = await sb
+      .from("orders")
+      .select("customer_name, panel_username, amount_cents, paid_at, plans(name, months)")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!order?.paid_at) {
+      console.error("[notify-admin-of-sale] pedido sem dados de pagamento", orderId);
+      return;
+    }
+
+    const months = order.plans?.months ?? 1;
+    const futureMonths = Math.max(0, months - 1);
+    const [{ count }, { data: renewedEvent }, { data: schedule }, { data: panelClient }] = await Promise.all([
+      sb.from("orders")
+        .select("id", { count: "exact", head: true })
+        .eq("panel_username", order.panel_username)
+        .in("status", ["paid", "renewed"] as const)
+        .neq("id", orderId),
+      sb.from("events").select("metadata").eq("order_id", orderId).eq("type", "renewed").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      sb.from("credit_schedules").select("last_exp_date").eq("order_id", orderId).maybeSingle(),
+      sb.from("panel_clients").select("expires_at").eq("username", order.panel_username).maybeSingle(),
+    ]);
+
+    const renewedExpSeconds = (renewedEvent?.metadata as { exp_date?: number | null } | null)?.exp_date;
+    const baseDate = renewedExpSeconds
+      ? new Date(renewedExpSeconds * 1000)
+      : schedule?.last_exp_date
+        ? new Date(schedule.last_exp_date)
+        : panelClient?.expires_at
+          ? new Date(panelClient.expires_at)
+          : null;
+    const expires = new Date(baseDate ?? order.paid_at);
+    expires.setMonth(expires.getMonth() + (baseDate ? futureMonths : months));
+
+    const kind = (count ?? 0) > 0 ? "RENOVAÇÃO" : "NOVO CLIENTE";
+    const futureLabel = futureMonths === 0 ? "0 meses" : `+${futureMonths} meses`;
+    const text = [
+      "<pre>🟢 VENDA CONFIRMADA • PIX APROVADO",
+      "",
+      "┌ DADOS DO ASSINANTE",
+      `│ Cliente: ${escapeHtml(order.customer_name)}`,
+      `│ Usuário: ${escapeHtml(order.panel_username)}`,
+      `│ Status:  [${kind}]`,
+      "│",
+      "├ PLANO & CRÉDITOS",
+      `│ Plano:   ${escapeHtml(order.plans?.name ?? "-")}`,
+      `│ Futuro:  ${futureLabel}`,
+      `│ Expira:  ${formatSaoPaulo(expires)}`,
+      "│",
+      "└ PAGAMENTO",
+      `  Valor:   ${BRL.format(order.amount_cents / 100)}`,
+      `  Data:    ${formatSaoPaulo(new Date(order.paid_at))}`,
+      "</pre>",
+    ].join("\n");
+
+    const chatId = process.env["TELEGRAM_ADMIN_CHAT_ID"] || process.env["ADMIN_TELEGRAM_CHAT_ID"] || "-1003741340423";
+    const { sendTelegram } = await import("./checkout.server");
+    const sent = await sendTelegram(chatId, text);
+    await sb.from("notifications_log").insert({ order_id: orderId, channel: "telegram_admin", status: sent ? "sent" : "failed" });
+  } catch (e) {
+    console.error("[notify-admin-of-sale]", orderId, e);
+  }
 }
 export async function sendConversionEvents(orderId: string) {
   console.log("[send-conversion-events] stub", orderId);
