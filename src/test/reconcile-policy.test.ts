@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "@/lib/reconcile-policy";
+import { CLOSED_RECHECK_WINDOW_MS, createThrottle, inRunSlot, mapLimit, shouldRecheckClosedOrder } from "@/lib/reconcile-policy";
 
 const MIN = 60_000;
 const at = (minute: number) => minute * MIN; // instante com minuto conhecido
@@ -63,5 +63,22 @@ describe("mapLimit", () => {
   });
   it("aceita lista vazia", async () => {
     await expect(mapLimit([], 5, async () => {})).resolves.toBeUndefined();
+  });
+});
+
+describe("inRunSlot (cron de 2 em 2 min rodando algo a cada 5 min)", () => {
+  it("um cron de 2 min cai exatamente 1 vez por janela de 5 min", () => {
+    for (const offset of [0, 1]) {
+      const perSlot = new Map<number, number>();
+      for (let m = offset; m < 600; m += 2) if (inRunSlot(at(m), 5)) perSlot.set(Math.floor(m / 5), (perSlot.get(Math.floor(m / 5)) ?? 0) + 1);
+      expect(perSlot.size).toBe(120);
+      expect([...perSlot.values()].every((n) => n === 1)).toBe(true);
+    }
+  });
+  it("a média fica em torno de 5 min (nunca passa de 6 min entre execuções)", () => {
+    const runs: number[] = [];
+    for (let m = 0; m < 600; m += 2) if (inRunSlot(at(m), 5)) runs.push(m);
+    const gaps = runs.slice(1).map((m, i) => m - runs[i]!);
+    expect(Math.max(...gaps)).toBeLessThanOrEqual(6);
   });
 });

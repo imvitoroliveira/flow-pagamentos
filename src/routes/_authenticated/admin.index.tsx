@@ -46,10 +46,13 @@ export type Overview = {
 export type Series = { bucket: string; clicks: number; pix: number; paid: number; revenue_cents: number }[];
 export type Breakdown = { key: string; label: string | null; clicks: number; pix: number; paid: number; revenue_cents: number }[];
 
+/** Dashboard blocks refresh by themselves every 5 min (and on the manual "atualizar" button). */
+export const DASH_REFRESH_MS = 5 * 60_000;
+
 export function useRpc<T>(name: string, args: Record<string, unknown>, key: unknown[]) {
   return useQuery({
     queryKey: ["rpc", name, ...key],
-    refetchInterval: 60_000,
+    refetchInterval: DASH_REFRESH_MS, staleTime: 60_000,
     queryFn: async () => {
       const { data, error } = await supabase.rpc(name as never, args as never);
       if (error) throw error;
@@ -132,7 +135,7 @@ function Alerts() {
   const integ = useServerFn(getIntegrationStatus);
   const q = useQuery({
     queryKey: ["admin-alerts"],
-    refetchInterval: 60_000,
+    refetchInterval: DASH_REFRESH_MS, staleTime: 60_000,
     queryFn: async () => {
       const tenMin = new Date(Date.now() - 10 * 60_000).toISOString();
       const day = new Date(Date.now() - 86_400_000).toISOString();
@@ -389,7 +392,7 @@ function LatestSales() {
   const f = useAdminFilters();
   const q = useQuery({
     queryKey: ["latest-sales", f.from, f.to, f.campaign, f.seller],
-    refetchInterval: 60_000,
+    refetchInterval: DASH_REFRESH_MS, staleTime: 60_000,
     queryFn: async () => {
       let r = supabase.from("orders").select("id, paid_at, customer_name, panel_username, amount_cents, status, plans(name), campaigns(name)")
         .not("paid_at", "is", null).gte("paid_at", f.from).lte("paid_at", f.to).order("paid_at", { ascending: false }).limit(10);

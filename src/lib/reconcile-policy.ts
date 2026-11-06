@@ -36,3 +36,11 @@ export async function mapLimit<T>(items: readonly T[], limit: number, fn: (item:
   const worker = async () => { while (i < items.length) { const item = items[i++] as T; await fn(item); } };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
+
+/**
+ * Stateless "run roughly every N minutes" for a cron that fires every ~2 min on any server instance:
+ * true during the first `widthMin` minutes of each N-minute slot, so a 2-minute cron hits it once per slot.
+ */
+export function inRunSlot(nowMs: number, everyMin: number, widthMin = 2): boolean {
+  return Math.floor(nowMs / 60_000) % everyMin < widthMin;
+}

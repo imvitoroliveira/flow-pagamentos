@@ -2,10 +2,12 @@
 //   POST /user/activation { username, months }  → renews (months: 1,2,3,4,5,6,12)
 //   POST /user/search     { username }          → list of matching users (partial match)
 import { sendTelegram } from "./checkout.server";
+import { inRunSlot } from "./reconcile-policy";
 import { looksApplied, nextRunFor, scheduleStateAfterApply } from "./drip-schedule";
 
 export const RETRY_DELAYS_MIN = [1, 5, 15];
 const FAIL_RETRY_MIN = 30;
+const SCHEDULES_EVERY_MIN = 5;
 const LOW_CREDITS_THRESHOLD = 3;
 const CREDIT_ALERT_COOLDOWN_MS = 86_400_000;
 
@@ -295,29 +297,34 @@ async function recoverStaleSchedules() {
 
 /** Runs every due schedule (called by the reconcile cron). */
 export async function processCreditSchedules() {
+  // Everything here talks to the NATV panel but is never urgent (renewals are due days ahead, failures retry
+  // every 30 min, stale rows after 10 min), so it only runs about once every 5 min instead of on every 2-min cron tick.
+  // Renewals of paid orders (processDueRetries) are NOT gated.
+  if (!inRunSlot(Date.now(), SCHEDULES_EVERY_MIN)) return { applied: 0, failed: 0, skipped: true };
   const sb = await db();
   await recoverStaleSchedules();
   const { data: due } = await sb.from("credit_schedules").select("id").eq("status", "active").lte("next_run_at", new Date().toISOString()).limit(20);
   let applied = 0, failed = 0;
   for (const r of due ?? []) { const res = await applyScheduleMonth(r.id); if (res.ok) applied++; else failed++; }
   await checkLowCreditsAlert();
-  return { applied, failed };
+  return { applied, failed, skipped: false };
 }
 
 /** Warns the admin (at most once a day) when free panel credits are low or upcoming renewals exceed them. */
 export async function checkLowCreditsAlert() {
   try {
-    const credits = await getResellerCredits();
-    if (credits === null) return;
     const sb = await db();
-    const { count } = await sb.from("credit_schedules").select("id", { count: "exact", head: true })
-      .eq("status", "active").lte("next_run_at", new Date(Date.now() + 3 * 86_400_000).toISOString());
-    const upcoming = count ?? 0;
-    if (credits >= LOW_CREDITS_THRESHOLD && upcoming <= credits) return;
+    // cheapest check first: if the alert already went out recently, don't even ask the panel
     const { data: recent } = await sb.from("notifications_log").select("id")
       .eq("channel", "telegram_credit_alert").eq("status", "sent")
       .gte("created_at", new Date(Date.now() - CREDIT_ALERT_COOLDOWN_MS).toISOString()).limit(1);
     if (recent?.length) return;
+    const credits = await getResellerCredits();
+    if (credits === null) return;
+    const { count } = await sb.from("credit_schedules").select("id", { count: "exact", head: true })
+      .eq("status", "active").lte("next_run_at", new Date(Date.now() + 3 * 86_400_000).toISOString());
+    const upcoming = count ?? 0;
+    if (credits >= LOW_CREDITS_THRESHOLD && upcoming <= credits) return;
     const sent = await sendTelegram(adminChatId(), `⚠️ <b>Atenção: Saldo de créditos NATV baixo</b>\nCréditos livres: ${credits}\nRenovações previstas em 3 dias: ${upcoming}\nRecarregue no painel para evitar falhas.`);
     await sb.from("notifications_log").insert({ channel: "telegram_credit_alert", status: sent ? "sent" : "failed" });
   } catch (e) {
