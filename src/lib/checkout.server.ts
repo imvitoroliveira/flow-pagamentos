@@ -46,12 +46,33 @@ export async function createAbacatePix(input: {
 export async function sendTelegram(chatId: string, text: string) {
   const token = process.env["TELEGRAM_BOT_TOKEN"];
   if (!token || !chatId) return false;
-  const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML" }),
-  });
-  return res.ok;
+  const send = (id: string | number) =>
+    fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: id, text, parse_mode: "HTML" }),
+    });
+  try {
+    let res = await send(chatId);
+    if (res.ok) return true;
+    let body = (await res.json().catch(() => ({}))) as {
+      description?: string;
+      parameters?: { migrate_to_chat_id?: number };
+    };
+    // Group promoted to supergroup: Telegram tells us the new id — retry there once.
+    const newId = body.parameters?.migrate_to_chat_id;
+    if (newId) {
+      console.warn(`[telegram] chat ${chatId} migrou para ${newId}; atualize TELEGRAM_ADMIN_CHAT_ID`);
+      res = await send(newId);
+      if (res.ok) return true;
+      body = (await res.json().catch(() => ({}))) as typeof body;
+    }
+    console.error("[telegram] envio recusado", res.status, body.description);
+    return false;
+  } catch (e) {
+    console.error("[telegram] erro de rede", e);
+    return false;
+  }
 }
 
 /** Calls the external panel to renew a user. Configure PANEL_RENEW_URL + PANEL_API_KEY. */
