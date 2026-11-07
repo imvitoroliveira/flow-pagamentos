@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createOrder, getOrderStatus, getPlans, trackEvent } from "@/lib/checkout.functions";
+import { readStoredRef, REF_KEY, serializeRef } from "@/lib/ref-storage";
 import { validateUsername } from "@/lib/renewal.functions";
 import { cn } from "@/lib/utils";
 
@@ -81,8 +82,13 @@ function PagarPage() {
   const plan = plans.find((p) => p.slug === slug) ?? plans[0];
 
   useEffect(() => {
-    const r = search.ref?.toUpperCase() || localStorage.getItem("natv_ref");
-    if (search.ref) localStorage.setItem("natv_ref", search.ref.toUpperCase());
+    let stored: string | null = null;
+    try {
+      stored = readStoredRef(localStorage.getItem(REF_KEY), Date.now());
+      if (search.ref) localStorage.setItem(REF_KEY, serializeRef(search.ref.toUpperCase(), Date.now()));
+      else if (!stored) localStorage.removeItem(REF_KEY); // expired or old format
+    } catch { /* storage blocked: attribution then only works via ?ref= */ }
+    const r = search.ref?.toUpperCase() || stored;
     setRef(r || null);
     track({ data: { session_id: sessionId(), ref_code: r || null, type: "page_view", metadata: { plano: search.plano ?? null } } }).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

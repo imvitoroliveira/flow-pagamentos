@@ -1,6 +1,7 @@
 // Server-only payment core shared by server routes (/api/public/*) and server functions.
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
+import { buildPurchaseEvent, metaEventsUrl, shouldReportToMeta } from "./meta-capi";
 import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "./reconcile-policy";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
@@ -305,8 +306,49 @@ export async function notifyAdminOfSale(orderId: string) {
     console.error("[notify-admin-of-sale]", orderId, e);
   }
 }
+/**
+ * Reports a paid order to Meta (Conversions API, server-side Purchase). Needs META_CAPI_TOKEN and the campaign's
+ * Meta Pixel ID; does nothing otherwise. Only orders that came from a Meta-tracked click (fbc/fbp) are sent.
+ * Never throws: a Meta failure must not affect the payment. Optional META_TEST_EVENT_CODE sends to the Test Events tool.
+ */
 export async function sendConversionEvents(orderId: string) {
-  console.log("[send-conversion-events] stub", orderId);
+  try {
+    const token = process.env["META_CAPI_TOKEN"];
+    if (!token) return;
+    const sb = await db();
+    const { data: o } = await sb.from("orders")
+      .select("id, event_id, ref_code, amount_cents, paid_at, customer_email, customer_phone, panel_username, campaigns(meta_pixel_id)")
+      .eq("id", orderId).maybeSingle();
+    const pixelId = o?.campaigns?.meta_pixel_id;
+    if (!o || !o.paid_at || !pixelId || !o.ref_code) return;
+    const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
+    if (!shouldReportToMeta(click)) return;
+
+    const { publicUrl } = await import("./site-url");
+    const body: Record<string, unknown> = {
+      data: [buildPurchaseEvent({
+        eventId: o.event_id ?? o.id, orderId: o.id, paidAt: o.paid_at, amountCents: o.amount_cents, sourceUrl: publicUrl("/pagar"),
+        email: o.customer_email, phone: o.customer_phone, panelUsername: o.panel_username,
+        fbc: click?.fbc ?? null, fbp: click?.fbp ?? null, userAgent: click?.user_agent ?? null,
+      })],
+    };
+    if (process.env["META_TEST_EVENT_CODE"]) body["test_event_code"] = process.env["META_TEST_EVENT_CODE"];
+
+    let ok = false;
+    try {
+      const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+        signal: AbortSignal.timeout(10_000),
+      });
+      ok = res.ok;
+      if (!res.ok) console.error("[meta-capi] rejected", res.status, (await res.text().catch(() => "")).slice(0, 300));
+    } catch (e) {
+      console.error("[meta-capi] request failed", (e as Error).message);
+    }
+    await sb.from("notifications_log").insert({ order_id: orderId, channel: "meta_capi", status: ok ? "sent" : "failed" });
+  } catch (e) {
+    console.error("[meta-capi]", orderId, e);
+  }
 }
 
 /**

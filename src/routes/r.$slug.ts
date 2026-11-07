@@ -7,8 +7,9 @@ export const Route = createFileRoute("/r/$slug")({
       GET: async ({ request, params }) => {
         const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
         const { makeRefCode, hashIp } = await import("@/lib/checkout.server");
+        const { isLinkPreviewBot } = await import("@/lib/link-bots");
         const url = new URL(request.url);
-        const { data: c } = await db.from("campaigns").select("*").eq("slug", params.slug).maybeSingle();
+        const { data: c } = await db.from("campaigns").select("id, active, destination_whatsapp, prefilled_message").eq("slug", params.slug).maybeSingle();
         if (!c || c.active === false) return Response.redirect(new URL("/pagar", url).toString(), 302);
 
         const cookies = Object.fromEntries(
@@ -22,8 +23,10 @@ export const Route = createFileRoute("/r/$slug")({
           const { data: l } = await db.from("campaign_links").select("id").eq("code", code).eq("campaign_id", c.id).maybeSingle();
           link_id = l?.id ?? null;
         }
-        let ref = makeRefCode();
-        for (let i = 0; i < 3; i++) {
+        // Link-preview/search crawlers are redirected like anyone else but are not recorded as clicks (no ref code).
+        const bot = isLinkPreviewBot(request.headers.get("user-agent"));
+        let ref: string | null = bot ? null : makeRefCode();
+        for (let i = 0; ref && i < 3; i++) {
           const { error } = await db.from("clicks").insert({
             campaign_id: c.id,
             link_id,
@@ -40,9 +43,12 @@ export const Route = createFileRoute("/r/$slug")({
           ref = makeRefCode();
         }
         const plano = url.searchParams.get("plano");
-        const toPagar = `/pagar?ref=${ref}${plano && /^[a-z]+$/.test(plano) ? `&plano=${plano}` : ""}`;
+        const qs = new URLSearchParams();
+        if (ref) qs.set("ref", ref);
+        if (plano && /^[a-z]+$/.test(plano)) qs.set("plano", plano);
+        const toPagar = `/pagar${qs.toString() ? `?${qs}` : ""}`;
         if (url.searchParams.get("pagar") === "1" || !c.destination_whatsapp) return Response.redirect(new URL(toPagar, url).toString(), 302);
-        const msg = `${c.prefilled_message ?? "Olá! Quero assinar o NATV."} [${ref}]`;
+        const msg = `${c.prefilled_message ?? "Olá! Quero assinar o NATV."}${ref ? ` [${ref}]` : ""}`;
         const wa = `https://wa.me/${c.destination_whatsapp.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
         return Response.redirect(wa, 302);
       },
