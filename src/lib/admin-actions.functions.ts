@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { campaignSchema, sellerSchema } from "./admin-schemas";
 import { nextRunFor } from "./drip-schedule";
+import { isSecretKey, SETTING_KEYS, validateSetting } from "./integration-settings";
 
 type Ctx = Parameters<typeof import("./admin.server").assertAdmin>[0];
 async function guard(context: unknown) {
@@ -171,6 +172,8 @@ export const getIntegrationDetails = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await guard(context);
     const { ABACATE_API_VERSION } = await import("./payments.server");
+    const { getSetting } = await import("./integration-settings.server");
+    const metaToken = await getSetting("META_CAPI_TOKEN");
     const items: { key: string; label: string; ok: boolean; optional?: boolean }[] = [
       { key: "ABACATEPAY_API_KEY", label: "Chave da AbacatePay", ok: anyEnv("ABACATEPAY_API_KEY") },
       { key: "ABACATEPAY_WEBHOOK_SECRET", label: "Segredo do webhook", ok: anyEnv("ABACATEPAY_WEBHOOK_SECRET") },
@@ -180,7 +183,7 @@ export const getIntegrationDetails = createServerFn({ method: "GET" })
       { key: "PANEL_RENEW_URL", label: "Endereço do painel de renovação", ok: anyEnv("PANEL_RENEW_URL", "RENEWAL_API_URL") },
       { key: "PANEL_API_KEY", label: "Chave do painel de renovação", ok: anyEnv("PANEL_API_KEY", "RENEWAL_API_KEY") },
       { key: "CRON_SECRET", label: "Segredo das tarefas agendadas", ok: anyEnv("CRON_SECRET", "LOVABLE_CRON_SECRET") },
-      { key: "META_CAPI_TOKEN", label: "Meta Conversions API", ok: anyEnv("META_CAPI_TOKEN"), optional: true },
+      { key: "META_CAPI_TOKEN", label: "Meta Conversions API", ok: metaToken.value !== null, optional: true },
       { key: "TIKTOK_EVENTS_TOKEN", label: "TikTok Events API", ok: anyEnv("TIKTOK_EVENTS_TOKEN"), optional: true },
       { key: "SUPPORT_WHATSAPP", label: "WhatsApp de suporte", ok: anyEnv("SUPPORT_WHATSAPP") },
     ];
@@ -207,6 +210,68 @@ export const testPanelConnection = createServerFn({ method: "POST" })
     try { await findPanelUser("natv_conn_test"); r = { ok: true }; }
     catch { r = fail("O painel de renovação não respondeu ou recusou a chave."); }
     await logAdminAction(ctx, { action: "settings.panel_test", details: { ok: r.ok } });
+    return r;
+  });
+
+// ─── settings: Meta / ads integrations (editable in the admin) ─────────────
+export const getIntegrationSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await guard(context);
+    const { describeSettings } = await import("./integration-settings.server");
+    return describeSettings();
+  });
+
+/** value === "" removes what was saved in the admin (falls back to the server variable, if any). */
+export const saveIntegrationSetting = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ key: z.enum(SETTING_KEYS), value: z.string().max(2000) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const srv = await import("./integration-settings.server");
+    const remove = data.value.trim() === "";
+    let r: { ok: true } | { ok: false; error: string };
+    if (remove) r = await srv.clearSetting(data.key);
+    else {
+      const v = validateSetting(data.key, data.value);
+      r = v.ok ? await srv.saveSetting(data.key, v.value, ctx.userId) : v;
+    }
+    // the value itself is never written to the audit log
+    await logAdminAction(ctx, { action: remove ? "settings.integration_clear" : "settings.integration_set", entity: "integration", details: { key: data.key, secret: isSecretKey(data.key), ok: r.ok } });
+    return r;
+  });
+
+/** Sends one test Purchase to Meta's "Test Events" (needs token + default Pixel ID + test code), never to real data. */
+export const testMetaConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { getSetting } = await import("./integration-settings.server");
+    const { buildPurchaseEvent, metaEventsUrl } = await import("./meta-capi");
+    const [token, pixel, code] = await Promise.all([getSetting("META_CAPI_TOKEN"), getSetting("META_PIXEL_ID"), getSetting("META_TEST_EVENT_CODE")]);
+    let r: { ok: true } | { ok: false; error: string };
+    if (!token.value) r = fail("Salve o token da Meta primeiro.");
+    else if (!pixel.value) r = fail("Salve o Pixel ID padrão primeiro.");
+    else if (!code.value) r = fail("Salve o código de teste (aba Testar eventos da Meta) para enviar um teste sem afetar suas vendas reais.");
+    else {
+      const { publicUrl } = await import("./site-url");
+      const event = buildPurchaseEvent({
+        eventId: `teste-${Date.now()}`, orderId: "teste", paidAt: new Date().toISOString(), amountCents: 100,
+        sourceUrl: publicUrl("/pagar"), email: "teste@example.com", userAgent: "NATV-teste-de-conexao",
+      });
+      try {
+        const res = await fetch(`${metaEventsUrl(pixel.value)}?access_token=${encodeURIComponent(token.value)}`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ data: [event], test_event_code: code.value }), signal: AbortSignal.timeout(10_000),
+        });
+        if (res.ok) r = { ok: true };
+        else {
+          const j = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
+          r = fail(`A Meta recusou o teste: ${(j?.error?.message ?? `erro ${res.status}`).slice(0, 200)}`);
+        }
+      } catch { r = fail("Não foi possível falar com a Meta agora."); }
+    }
+    await logAdminAction(ctx, { action: "settings.meta_test", details: { ok: r.ok } });
     return r;
   });
 

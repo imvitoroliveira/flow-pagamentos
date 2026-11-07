@@ -313,13 +313,15 @@ export async function notifyAdminOfSale(orderId: string) {
  */
 export async function sendConversionEvents(orderId: string) {
   try {
-    const token = process.env["META_CAPI_TOKEN"];
+    const { getSetting } = await import("./integration-settings.server");
+    const token = (await getSetting("META_CAPI_TOKEN")).value;
     if (!token) return;
     const sb = await db();
     const { data: o } = await sb.from("orders")
       .select("id, event_id, ref_code, amount_cents, paid_at, customer_email, customer_phone, panel_username, campaigns(meta_pixel_id)")
       .eq("id", orderId).maybeSingle();
-    const pixelId = o?.campaigns?.meta_pixel_id;
+    // the campaign's own Pixel ID wins; otherwise the default one saved in Configurações → Integrações
+    const pixelId = o?.campaigns?.meta_pixel_id || (await getSetting("META_PIXEL_ID")).value;
     if (!o || !o.paid_at || !pixelId || !o.ref_code) return;
     const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
     if (!shouldReportToMeta(click)) return;
@@ -332,7 +334,8 @@ export async function sendConversionEvents(orderId: string) {
         fbc: click?.fbc ?? null, fbp: click?.fbp ?? null, userAgent: click?.user_agent ?? null,
       })],
     };
-    if (process.env["META_TEST_EVENT_CODE"]) body["test_event_code"] = process.env["META_TEST_EVENT_CODE"];
+    const testCode = (await getSetting("META_TEST_EVENT_CODE")).value;
+    if (testCode) body["test_event_code"] = testCode; // test mode: events go only to Meta's Test Events tool
 
     let ok = false;
     try {

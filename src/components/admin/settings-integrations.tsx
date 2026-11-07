@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Tone } from "@/components/admin/confirm";
 import { ListSkeleton } from "@/components/admin/list-controls";
+import { MetaSettings } from "@/components/admin/settings-meta";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/routes/_authenticated/admin.index";
 import { getIntegrationDetails, testAdminTelegram, testPanelConnection } from "@/lib/admin-actions.functions";
@@ -42,6 +43,7 @@ export function IntegrationsSettings() {
 
   return (
     <div className="space-y-4">
+      <MetaSettings />
       <ul className="space-y-2">
         {q.data.items.map((i: Item) => (
           <li key={i.key} className="glass flex flex-wrap items-center justify-between gap-2 rounded-2xl border p-4 text-sm">
