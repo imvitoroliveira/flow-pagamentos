@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_auth
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
+import { Route as ApiPublicProcessDripRouteImport } from './routes/api/public/process-drip'
 import { Route as ApiPublicReconcilePaymentsRouteImport } from './routes/api/public/reconcile-payments'
 import { Route as ApiPublicRenewalRetriesRouteImport } from './routes/api/public/renewal-retries'
 
@@ -139,6 +140,11 @@ const ApiPublicCreatePaymentRoute = ApiPublicCreatePaymentRouteImport.update({
   path: '/api/public/create-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicProcessDripRoute = ApiPublicProcessDripRouteImport.update({
+  id: '/api/public/process-drip',
+  path: '/api/public/process-drip',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicReconcilePaymentsRoute =
   ApiPublicReconcilePaymentsRouteImport.update({
     id: '/api/public/reconcile-payments',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -192,6 +199,7 @@ export interface FileRoutesByTo {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -242,6 +251,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/admin/'
@@ -264,6 +274,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/admin'
@@ -288,6 +299,7 @@ export interface FileRouteTypes {
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
     | '/_authenticated/admin/'
@@ -303,6 +315,7 @@ export interface RootRouteChildren {
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
   ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
+  ApiPublicProcessDripRoute: typeof ApiPublicProcessDripRoute
   ApiPublicReconcilePaymentsRoute: typeof ApiPublicReconcilePaymentsRoute
   ApiPublicRenewalRetriesRoute: typeof ApiPublicRenewalRetriesRoute
 }
@@ -449,6 +462,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatePaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/process-drip': {
+      id: '/api/public/process-drip'
+      path: '/api/public/process-drip'
+      fullPath: '/api/public/process-drip'
+      preLoaderRoute: typeof ApiPublicProcessDripRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/reconcile-payments': {
       id: '/api/public/reconcile-payments'
       path: '/api/public/reconcile-payments'
@@ -516,6 +536,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
   ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
+  ApiPublicProcessDripRoute: ApiPublicProcessDripRoute,
   ApiPublicReconcilePaymentsRoute: ApiPublicReconcilePaymentsRoute,
   ApiPublicRenewalRetriesRoute: ApiPublicRenewalRetriesRoute,
 }
