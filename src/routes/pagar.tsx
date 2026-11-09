@@ -12,6 +12,7 @@ import { createOrder, getOrderStatus, getPlans, trackEvent } from "@/lib/checkou
 import { readStoredRef, REF_KEY, serializeRef } from "@/lib/ref-storage";
 import { validateUsername } from "@/lib/renewal.functions";
 import { cn } from "@/lib/utils";
+import logoFull from "@/assets/natv-logo-full.png.asset.json";
 
 const plansQuery = queryOptions({ queryKey: ["plans"], queryFn: () => getPlans() });
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -140,14 +141,10 @@ function PagarPage() {
 
   return (
     <main className="mx-auto w-full max-w-md px-5 pb-16 pt-8">
-      <header className="mb-6 flex items-center gap-3">
-        <div className="flex size-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow">
-          <Tv className="size-5 text-primary-foreground" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">NATV</h1>
-          <p className="text-sm text-muted-foreground">Renove em menos de 1 minuto</p>
-        </div>
+      <header className="mb-6 flex flex-col items-center gap-2 text-center">
+        <h1 className="sr-only">NATV</h1>
+        <img src={logoFull.url} alt="NATV" className="h-auto w-56 max-w-full" />
+        <p className="text-sm text-muted-foreground">Renove em menos de 1 minuto</p>
       </header>
 
       {step < 3 && <Steps step={step} />}
