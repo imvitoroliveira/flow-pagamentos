@@ -2,12 +2,10 @@
 //   POST /user/activation { username, months }  → renews (months: 1,2,3,4,5,6,12)
 //   POST /user/search     { username }          → list of matching users (partial match)
 import { sendTelegram } from "./checkout.server";
-import { inRunSlot } from "./reconcile-policy";
-import { looksApplied, nextRunFor, scheduleStateAfterApply } from "./drip-schedule";
+import { looksApplied, manualScheduleRow, nextRunFor, scheduleStateAfterApply, type ManualScheduleInput } from "./drip-schedule";
 
 export const RETRY_DELAYS_MIN = [1, 5, 15];
 const FAIL_RETRY_MIN = 30;
-const SCHEDULES_EVERY_MIN = 5;
 const LOW_CREDITS_THRESHOLD = 3;
 const CREDIT_ALERT_COOLDOWN_MS = 86_400_000;
 
@@ -295,22 +293,83 @@ async function recoverStaleSchedules() {
   }
 }
 
-/** Runs every due schedule (called by the reconcile cron). */
+/** Runs every due schedule. Called once a day (08:00 BRT) by /api/public/process-drip. */
 export async function processCreditSchedules() {
-  // Everything here talks to the NATV panel but is never urgent (renewals are due days ahead, failures retry
-  // every 30 min, stale rows after 10 min), so it only runs about once every 5 min instead of on every 2-min cron tick.
-  // Renewals of paid orders (processDueRetries) are NOT gated.
-  if (!inRunSlot(Date.now(), SCHEDULES_EVERY_MIN)) return { applied: 0, failed: 0, skipped: true };
   const sb = await db();
   await recoverStaleSchedules();
   const { data: due } = await sb.from("credit_schedules").select("id").eq("status", "active").lte("next_run_at", new Date().toISOString()).limit(20);
   let applied = 0, failed = 0;
   for (const r of due ?? []) { const res = await applyScheduleMonth(r.id); if (res.ok) applied++; else failed++; }
   await checkLowCreditsAlert();
-  return { applied, failed, skipped: false };
+  return { applied, failed };
 }
 
-/** Warns the admin (at most once a day) when free panel credits are low or upcoming renewals exceed them. */
+/** Admin dialog: does the panel user exist, when does it expire, and does it already have open schedules? */
+export async function lookupPanelAccount(username: string) {
+  const user = await findPanelUser(username.trim());
+  if (!user) return { found: false as const };
+  const sb = await db();
+  const { data: open } = await sb.from("credit_schedules").select("id, months_applied, total_months").eq("panel_username", user.username).in("status", ["active", "paused", "running"]);
+  return {
+    found: true as const,
+    username: user.username,
+    exp_date: user.exp_date ? new Date(user.exp_date * 1000).toISOString() : null,
+    open_schedules: (open ?? []).length,
+  };
+}
+
+/**
+ * Registers a cash sale of N months: optionally activates month 1 now, records a "MANUAL" order and
+ * schedules the remaining months. Nothing is written when the panel outcome is unknown.
+ */
+export async function registerManualSchedule(input: ManualScheduleInput & { admin_id?: string }) {
+  const sb = await db();
+  const user = await findPanelUser(input.panel_username);
+  if (!user) throw new Error(`Usuário "${input.panel_username}" não encontrado no painel NATV.`);
+  const baseline = user.exp_date ? new Date(user.exp_date * 1000) : null;
+  let exp = baseline;
+  let activated = false;
+
+  if (input.activate_first_month_now) {
+    const startedAt = Date.now();
+    let after: PanelUser;
+    try {
+      after = await activate(user.username, 1);
+    } catch (e) {
+      if (!(e instanceof PanelUncertainError)) throw e;
+      const c = await checkApplied(user.username, baseline, startedAt, 1);
+      if (c.verdict !== "applied") throw new Error("O painel não confirmou a ativação. Confira o vencimento no painel NATV antes de tentar de novo (nada foi registrado).");
+      after = c.user;
+    }
+    activated = true;
+    exp = after.exp_date ? new Date(after.exp_date * 1000) : exp;
+  }
+  if (!exp) throw new Error("O painel não informou a data de vencimento deste usuário.");
+
+  const { data: plans } = await sb.from("plans").select("id, months, slug").eq("active", true);
+  const plan = (plans ?? []).find((p) => p.months === input.total_months) ?? (plans ?? []).find((p) => p.slug === "mensal") ?? (plans ?? []).find((p) => p.months === 1);
+  if (!plan) throw new Error("Nenhum plano ativo encontrado para vincular a venda.");
+
+  const row = manualScheduleRow(input, exp);
+  const now = new Date().toISOString();
+  const { data: order, error: oErr } = await sb.from("orders").insert({
+    customer_name: input.customer_name?.trim() || user.username,
+    customer_phone: input.customer_phone?.trim() ?? "",
+    panel_username: user.username,
+    amount_cents: row.amount_cents,
+    status: "renewed", plan_id: plan.id, ref_code: "MANUAL", paid_at: now, renewed_at: now,
+  }).select("id").single();
+  if (oErr || !order) throw new Error(`${activated ? "O 1º mês JÁ foi ativado no painel, mas" : "Não foi possível"} registrar a venda${activated ? "; registre-a manualmente" : ""}.`);
+
+  const { data: sched, error: sErr } = await sb.from("credit_schedules").insert({ order_id: order.id, panel_username: user.username, ...row.schedule }).select("id, next_run_at").single();
+  if (sErr || !sched) {
+    await sb.from("orders").delete().eq("id", order.id);
+    throw new Error(`${activated ? "O 1º mês JÁ foi ativado no painel, mas" : "Não foi possível"} criar o agendamento. Tente "Já ativei o 1º mês" para agendar sem ativar de novo.`);
+  }
+  await sb.from("events").insert({ order_id: order.id, type: "renewed", metadata: { manual: true, activated_now: activated, notes: input.notes ?? null, exp_date: Math.floor(exp.getTime() / 1000) } });
+  return { schedule_id: sched.id as string, next_run_at: sched.next_run_at as string, exp_date: exp.toISOString(), activated };
+}
+
 export async function checkLowCreditsAlert() {
   try {
     const sb = await db();

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { campaignSchema, sellerSchema } from "./admin-schemas";
+import { campaignSchema, manualScheduleSchema, sellerSchema } from "./admin-schemas";
 import { nextRunFor } from "./drip-schedule";
 import { isSecretKey, SETTING_KEYS, validateSetting } from "./integration-settings";
 
@@ -356,4 +356,26 @@ export const scheduleAction = createServerFn({ method: "POST" })
     }
     await logAdminAction(ctx, { action: `credit_schedule.${data.action}`, entity: "credit_schedule", entity_id: data.id, details: { ok: res.ok, error: res.error ?? null } });
     return res.ok ? { ok: true as const } : fail(res.error ?? "Falhou");
+  });
+
+export const lookupPanelAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ username: z.string().trim().min(1).max(80) }).parse(d))
+  .handler(async ({ data, context }) => {
+    await guard(context);
+    const { lookupPanelAccount: lookup } = await import("./renewal.server");
+    try { return { ok: true as const, ...(await lookup(data.username)) }; } catch (e) { return fail((e as Error).message); }
+  });
+
+export const createManualSchedule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => manualScheduleSchema.parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { registerManualSchedule } = await import("./renewal.server");
+    try {
+      const r = await registerManualSchedule(data);
+      await logAdminAction(ctx, { action: "manual_schedule_created", entity: "credit_schedule", entity_id: r.schedule_id, details: { username: data.panel_username, total_months: data.total_months, amount_reais: data.amount_reais, activated_now: r.activated, notes: data.notes || null } });
+      return { ok: true as const, schedule_id: r.schedule_id, next_run_at: r.next_run_at };
+    } catch (e) { return fail((e as Error).message); }
   });

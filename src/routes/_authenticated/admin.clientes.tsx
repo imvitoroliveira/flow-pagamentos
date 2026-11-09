@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { syncClients } from "@/lib/admin-actions.functions";
 import { Button } from "@/components/ui/button";
+import { ManualScheduleDialog } from "@/components/admin/manual-schedule-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
@@ -120,7 +121,7 @@ function ClientsPage() {
           <div className="hidden overflow-x-auto rounded-lg border md:block">
             <table className="w-full text-sm">
               <thead className="bg-muted/50 text-left text-muted-foreground">
-                <tr><th className="p-3">Usuário</th><th className="p-3">Senha</th><th className="p-3">Vencimento</th><th className="p-3">Status</th><th className="p-3">Telas</th><th className="p-3">Telefone</th><th className="p-3">Último acesso</th></tr>
+                <tr><th className="p-3">Usuário</th><th className="p-3">Senha</th><th className="p-3">Vencimento</th><th className="p-3">Status</th><th className="p-3">Telas</th><th className="p-3">Telefone</th><th className="p-3">Último acesso</th><th className="p-3"><span className="sr-only">Ações</span></th></tr>
               </thead>
               <tbody>
                 {rows.map((c) => {
@@ -134,6 +135,7 @@ function ClientsPage() {
                       <td className="p-3">{c.connections ?? "—"}</td>
                       <td className="p-3">{c.phone ?? "—"}</td>
                       <td className="p-3 whitespace-nowrap text-muted-foreground">{fmtDate(c.last_seen_at)}</td>
+                      <td className="p-3"><ManualScheduleDialog defaultUsername={c.username} trigger={<Button variant="outline" className="h-11">Agendar Futuros</Button>} /></td>
                     </tr>
                   );
                 })}
@@ -151,6 +153,7 @@ function ClientsPage() {
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Telas / Telefone</span><span>{c.connections ?? "—"} · {c.phone ?? "—"}</span></div>
                   {c.blocked && <Tone tone="bad">Bloqueado</Tone>}
                   <FutureBadge schedule={futureByUser.get(c.username.toLowerCase())} />
+                  <ManualScheduleDialog defaultUsername={c.username} trigger={<Button variant="outline" className="h-11 w-full">Agendar Futuros</Button>} />
                 </Card>
               );
             })}

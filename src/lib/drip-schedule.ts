@@ -35,3 +35,32 @@ export function looksApplied(a: { baselineExp: Date | null; startedAt: number; m
   const base = Math.max(a.baselineExp?.getTime() ?? 0, a.startedAt);
   return a.currentExp.getTime() >= base + a.months * MIN_DAYS_PER_MONTH * 86_400_000;
 }
+
+/** BRL amount typed by the admin ("150", 150.5, "1.234,50") → integer cents. NaN-safe: returns 0 for junk. */
+export function reaisToCents(v: number): number {
+  return Number.isFinite(v) && v > 0 ? Math.round(v * 100) : 0;
+}
+
+export type ManualScheduleInput = {
+  panel_username: string;
+  customer_name?: string;
+  customer_phone?: string;
+  total_months: number;
+  amount_reais: number;
+  activate_first_month_now: boolean;
+  notes?: string;
+};
+
+/** Cash sale: month 1 is already on the panel (`exp` is the expiration after it), the rest is scheduled. */
+export function manualScheduleRow(i: Pick<ManualScheduleInput, "total_months" | "amount_reais">, exp: Date) {
+  return {
+    amount_cents: reaisToCents(i.amount_reais),
+    schedule: {
+      total_months: i.total_months,
+      months_applied: 1,
+      last_exp_date: exp.toISOString(),
+      next_run_at: nextRunFor(exp),
+      status: "active" as const,
+    },
+  };
+}

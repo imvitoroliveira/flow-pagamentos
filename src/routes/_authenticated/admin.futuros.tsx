@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Confirm, Tone } from "@/components/admin/confirm";
 import { ListSkeleton } from "@/components/admin/list-controls";
+import { ManualScheduleDialog } from "@/components/admin/manual-schedule-dialog";
 
 const T = "Futuros — Admin NATV";
 const D = "Renovações mensais agendadas e créditos comprometidos no painel NATV.";
@@ -94,9 +95,12 @@ function FuturesPage() {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="font-display text-2xl font-semibold">Futuros</h1>
-        <p className="text-sm text-muted-foreground">Planos de 3 e 6 meses renovam 1 mês por vez, 2 dias antes de cada vencimento. Os créditos restantes ficam livres no seu painel até lá.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="font-display text-2xl font-semibold">Futuros</h1>
+          <p className="text-sm text-muted-foreground">Planos de 3 e 6 meses renovam 1 mês por vez, 2 dias antes de cada vencimento. Os créditos restantes ficam livres no seu painel até lá.</p>
+        </div>
+        <ManualScheduleDialog trigger={<Button className="h-11 shrink-0">+ Novo Agendamento (Venda Manual)</Button>} />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
