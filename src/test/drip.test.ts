@@ -80,7 +80,7 @@ describe("agendamento manual (venda em espécie)", () => {
     expect(reaisToCents(Number.NaN)).toBe(0);
   });
   it("monta o agendamento: 1 mês já aplicado, próxima execução 2 dias antes do vencimento", () => {
-    const r = manualScheduleRow({ total_months: 3, amount_reais: 120 }, exp);
+    const r = manualScheduleRow({ total_months: 3, amount_reais: 120, activate_first_month_now: false }, exp);
     expect(r.amount_cents).toBe(12000);
     expect(r.schedule).toMatchObject({ total_months: 3, months_applied: 1, status: "active", last_exp_date: exp.toISOString() });
     expect(new Date(r.schedule.next_run_at).getTime()).toBe(exp.getTime() - DRIP_LEAD_DAYS * DAY);
@@ -88,16 +88,38 @@ describe("agendamento manual (venda em espécie)", () => {
   });
   it("vencimento a menos de 2 dias: próxima execução é imediata (nunca no passado)", () => {
     const soon = new Date(Date.now() + DAY);
-    const r = manualScheduleRow({ total_months: 2, amount_reais: 50 }, soon);
+    const r = manualScheduleRow({ total_months: 2, amount_reais: 50, activate_first_month_now: false }, soon);
     expect(new Date(r.schedule.next_run_at).getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
-  it("valida a entrada: mínimo 2 meses, usuário obrigatório, valores como texto", () => {
+  it("valida a entrada: mínimo 1 mês, usuário obrigatório, valores como texto", () => {
     const base = { panel_username: " joao ", total_months: "3", amount_reais: "150", activate_first_month_now: false };
     const ok = manualScheduleSchema.parse(base);
     expect(ok).toMatchObject({ panel_username: "joao", total_months: 3, amount_reais: 150, customer_name: "" });
-    expect(manualScheduleSchema.safeParse({ ...base, total_months: 1 }).success).toBe(false);
+    expect(manualScheduleSchema.safeParse({ ...base, total_months: 1 }).success).toBe(true);
+    expect(manualScheduleSchema.safeParse({ ...base, total_months: 0 }).success).toBe(false);
     expect(manualScheduleSchema.safeParse({ ...base, total_months: 2.5 }).success).toBe(false);
     expect(manualScheduleSchema.safeParse({ ...base, panel_username: "  " }).success).toBe(false);
     expect(manualScheduleSchema.safeParse({ ...base, amount_reais: -1 }).success).toBe(false);
+  });
+  it("1 mês adiantado e agendado: nada aplicado, ativa 2 dias antes do vencimento", () => {
+    const r = manualScheduleRow({ total_months: 1, amount_reais: 35, activate_first_month_now: false }, exp);
+    expect(r.amount_cents).toBe(3500);
+    expect(r.schedule.months_applied).toBe(0);
+    expect(r.schedule.status).toBe("active");
+    expect(new Date(r.schedule.next_run_at!).getTime()).toBe(exp.getTime() - DRIP_LEAD_DAYS * DAY);
+    expect(remainingMonths(r.schedule)).toBe(1);
+  });
+  it("1 mês ativado agora: nasce concluído, sem próxima execução", () => {
+    const r = manualScheduleRow({ total_months: 1, amount_reais: 35, activate_first_month_now: true }, exp);
+    expect(r.schedule.months_applied).toBe(1);
+    expect(r.schedule.status).toBe("done");
+    expect(r.schedule.next_run_at).toBeNull();
+    expect(remainingMonths(r.schedule)).toBe(0);
+  });
+  it("3 meses com o 1º já ativo: 1 aplicado, 2 restantes", () => {
+    const r = manualScheduleRow({ total_months: 3, amount_reais: 90, activate_first_month_now: false }, exp);
+    expect(r.schedule.months_applied).toBe(1);
+    expect(r.schedule.status).toBe("active");
+    expect(remainingMonths(r.schedule)).toBe(2);
   });
 });

@@ -142,7 +142,7 @@ function FuturesPage() {
                       <div className="flex gap-1"><Tone tone={st.tone}>{st.label}</Tone>{r.last_error && openRow && <Tone tone="bad">Falhou</Tone>}</div>
                     </div>
                     <div className="space-y-1">
-                      <div className="flex justify-between text-sm"><span>Mês {r.months_applied} de {r.total_months}</span><span className="text-muted-foreground">Restam {remainingMonths(r)}</span></div>
+                      <div className="flex justify-between text-sm"><span>{r.months_applied === 0 ? `Aguardando vencimento (0 de ${r.total_months} aplicado)` : `Mês ${r.months_applied} de ${r.total_months}`}</span><span className="text-muted-foreground">Restam {remainingMonths(r)}</span></div>
                       <Progress value={(r.months_applied / r.total_months) * 100} aria-label={`Mês ${r.months_applied} de ${r.total_months}`} />
                     </div>
                     <div className="grid gap-1 text-sm sm:grid-cols-2">

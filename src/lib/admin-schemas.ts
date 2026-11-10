@@ -54,7 +54,7 @@ export const manualScheduleSchema = z.object({
   panel_username: z.string().trim().min(1, "Informe o usuário do painel").max(80),
   customer_name: z.string().trim().max(80).optional().default(""),
   customer_phone: z.string().trim().max(30).optional().default(""),
-  total_months: z.coerce.number().int("Use um número inteiro").min(2, "Mínimo 2 meses").max(12, "Máximo 12 meses"),
+  total_months: z.coerce.number().int("Use um número inteiro").min(1, "Mínimo 1 mês").max(12, "Máximo 12 meses"),
   amount_reais: z.coerce.number().min(0, "Valor inválido").max(100000, "Valor muito alto"),
   activate_first_month_now: z.boolean(),
   notes: z.string().trim().max(300).optional().default(""),

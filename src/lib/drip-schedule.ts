@@ -51,16 +51,26 @@ export type ManualScheduleInput = {
   notes?: string;
 };
 
-/** Cash sale: month 1 is already on the panel (`exp` is the expiration after it), the rest is scheduled. */
-export function manualScheduleRow(i: Pick<ManualScheduleInput, "total_months" | "amount_reais">, exp: Date) {
+/**
+ * Cash sale. Multi-month: month 1 is already on the panel (`exp` is the expiration after it), the rest is scheduled.
+ * One month paid in advance and not activated now: nothing applied yet, activation runs 2 days before `exp`.
+ * One month activated now: nothing left to schedule, the row is born "done".
+ */
+export function manualScheduleRow(
+  i: Pick<ManualScheduleInput, "total_months" | "amount_reais" | "activate_first_month_now">,
+  exp: Date,
+) {
+  const isOneMonthDeferred = i.total_months === 1 && !i.activate_first_month_now;
+  const months_applied = isOneMonthDeferred ? 0 : 1;
+  const done = months_applied >= i.total_months;
   return {
     amount_cents: reaisToCents(i.amount_reais),
     schedule: {
       total_months: i.total_months,
-      months_applied: 1,
+      months_applied,
+      status: done ? ("done" as const) : ("active" as const),
+      next_run_at: done ? null : nextRunFor(exp),
       last_exp_date: exp.toISOString(),
-      next_run_at: nextRunFor(exp),
-      status: "active" as const,
     },
   };
 }

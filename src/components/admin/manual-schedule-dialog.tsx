@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const dt = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
-const QUICK = [2, 3, 6];
+const QUICK = [1, 2, 3, 6];
 type Found = { username: string; exp_date: string | null; open_schedules: number };
 
 export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultName = "" }: { trigger: ReactNode; defaultUsername?: string; defaultName?: string }) {
@@ -50,11 +50,11 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
   }
 
   const n = Number(months);
-  const validN = Number.isInteger(n) && n >= 2;
+  const validN = Number.isInteger(n) && n >= 1;
   const exp = found?.exp_date ? new Date(found.exp_date) : null;
   // "Já ativei": the panel expiration already includes month 1. "Ativar agora": it will move ~1 month, so the next run is
   // computed from the real date the server gets back; here we only show an estimate.
-  const nextRun = exp ? (activateNow ? new Date(nextRunFor(new Date(exp.getTime() + 30 * 86_400_000))) : new Date(nextRunFor(exp))) : null;
+  const nextRun = exp ? (activateNow && n >= 2 ? new Date(nextRunFor(new Date(exp.getTime() + 30 * 86_400_000))) : new Date(nextRunFor(exp))) : null;
 
   async function save() {
     const parsed = manualScheduleSchema.safeParse({ panel_username: username, customer_name: name, customer_phone: phone, total_months: months, amount_reais: amount.replace(",", ".") || 0, activate_first_month_now: activateNow, notes });
@@ -63,7 +63,8 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
     try {
       const r = await create({ data: parsed.data });
       if (!r.ok) { toast.error(r.error); return; }
-      toast.success(`Agendado! Próxima renovação em ${dt(new Date(r.next_run_at))}`);
+      if (r.next_run_at) toast.success(`Agendado! Próxima renovação em ${dt(new Date(r.next_run_at))}`);
+      else toast.success("Venda registrada e plano ativado com sucesso no painel!");
       qc.invalidateQueries({ queryKey: ["credit_schedules"] });
       qc.invalidateQueries({ queryKey: ["credit_schedules_open"] });
       qc.invalidateQueries({ queryKey: ["futuros_orders"] });
@@ -107,8 +108,8 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
           <div className="space-y-1">
             <Label htmlFor="ms-months">Meses pagos</Label>
             <div className="flex flex-wrap gap-2">
-              {QUICK.map((q) => <Button key={q} type="button" className="h-11 min-w-[44px]" variant={months === String(q) ? "default" : "outline"} aria-pressed={months === String(q)} onClick={() => setMonths(String(q))}>{q} meses</Button>)}
-              <Input id="ms-months" type="number" inputMode="numeric" min={2} max={12} className="h-11 w-24" value={months} onChange={(e) => setMonths(e.target.value)} />
+              {QUICK.map((q) => <Button key={q} type="button" className="h-11 min-w-[44px]" variant={months === String(q) ? "default" : "outline"} aria-pressed={months === String(q)} onClick={() => setMonths(String(q))}>{q} {q === 1 ? "mês" : "meses"}</Button>)}
+              <Input id="ms-months" type="number" inputMode="numeric" min={1} max={12} className="h-11 w-24" value={months} onChange={(e) => setMonths(e.target.value)} />
             </div>
             {err("total_months")}
           </div>
@@ -116,8 +117,8 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
           <div className="space-y-2">
             <Label>1º mês</Label>
             <RadioGroup value={activateNow ? "now" : "done"} onValueChange={(v) => setActivateNow(v === "now")} className="gap-2">
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border p-3 text-sm"><RadioGroupItem value="done" /> Já ativei o 1º mês manualmente no painel NATV</label>
-              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border p-3 text-sm"><RadioGroupItem value="now" /> Ativar o 1º mês agora pelo sistema (gasta 1 crédito)</label>
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border p-3 text-sm"><RadioGroupItem value="done" /> {n === 1 ? "Agendar ativação para o vencimento (não gasta crédito agora)" : "Já ativei o 1º mês manualmente no painel NATV"}</label>
+              <label className="flex min-h-[44px] cursor-pointer items-center gap-3 rounded-md border p-3 text-sm"><RadioGroupItem value="now" /> {n === 1 ? "Ativar agora pelo sistema (gasta 1 crédito imediatamente)" : "Ativar o 1º mês agora pelo sistema (gasta 1 crédito)"}</label>
             </RadioGroup>
           </div>
 
@@ -144,9 +145,12 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
           <div className="flex items-start gap-2 rounded-md bg-muted p-3 text-sm">
             <CalendarClock className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <div>
-              {validN ? <p><strong>1 crédito {activateNow ? "consumido agora" : "já ativo"}</strong> + <strong>{n - 1}</strong> crédito(s) agendado(s) para renovação automática.</p> : <p>Informe 2 meses ou mais.</p>}
-              {validN && nextRun && <p className="text-muted-foreground">Próxima renovação: ~{dt(nextRun)} (2 dias antes do vencimento{activateNow ? ", estimativa" : ""}; roda às 08:00).</p>}
-              {validN && !nextRun && <p className="text-muted-foreground">Clique em “Verificar” para ver a data da próxima renovação.</p>}
+              {!validN ? <p>Informe 1 mês ou mais.</p>
+                : n === 1 && activateNow ? <p><strong>1 crédito consumido agora</strong> pelo sistema. Nenhum crédito futuro restante.</p>
+                : n === 1 ? <p><strong>1 crédito agendado</strong> para ativação automática (nenhum crédito consumido agora).</p>
+                : <p><strong>1 crédito {activateNow ? "consumido agora" : "já ativo"}</strong> + <strong>{n - 1}</strong> crédito(s) agendado(s) para renovação automática.</p>}
+              {validN && !(n === 1 && activateNow) && nextRun && <p className="text-muted-foreground">Próxima renovação: ~{dt(nextRun)} (2 dias antes do vencimento{activateNow && n >= 2 ? ", estimativa" : ""}; roda às 08:00).</p>}
+              {validN && !(n === 1 && activateNow) && !nextRun && <p className="text-muted-foreground">Clique em “Verificar” para ver a data da próxima renovação.</p>}
             </div>
           </div>
 

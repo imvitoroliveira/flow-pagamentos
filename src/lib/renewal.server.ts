@@ -367,7 +367,7 @@ export async function registerManualSchedule(input: ManualScheduleInput & { admi
     throw new Error(`${activated ? "O 1º mês JÁ foi ativado no painel, mas" : "Não foi possível"} criar o agendamento. Tente "Já ativei o 1º mês" para agendar sem ativar de novo.`);
   }
   await sb.from("events").insert({ order_id: order.id, type: "renewed", metadata: { manual: true, activated_now: activated, notes: input.notes ?? null, exp_date: Math.floor(exp.getTime() / 1000) } });
-  return { schedule_id: sched.id as string, next_run_at: sched.next_run_at as string, exp_date: exp.toISOString(), activated };
+  return { schedule_id: sched.id as string, next_run_at: sched.next_run_at as string | null, exp_date: exp.toISOString(), activated };
 }
 
 export async function checkLowCreditsAlert() {
