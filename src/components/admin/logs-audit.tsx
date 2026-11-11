@@ -42,7 +42,18 @@ const FILTERS = [
   { v: "settings", l: "Integrações & Sistema", or: "action.like.settings.*,action.eq.client.sync,action.eq.retry_renewal" },
 ] as const;
 
-type Details = Record<string, unknown>;
+type Details = {
+  total_months?: number | string;
+  username?: string;
+  amount_reais?: number | string;
+  activated_now?: boolean;
+  month_applied?: number | string;
+  remaining?: number | string;
+  failed?: number | string;
+  applied?: number | string;
+  [key: string]: unknown;
+};
+
 const brl = (v: unknown) => typeof v === "number" ? v.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v ?? "—");
 
 /** Executive one-liner for the actions that matter to the business; null = nothing to add. */
