@@ -83,13 +83,13 @@ describe("agendamento manual (venda em espécie)", () => {
     const r = manualScheduleRow({ total_months: 3, amount_reais: 120, activate_first_month_now: false }, exp);
     expect(r.amount_cents).toBe(12000);
     expect(r.schedule).toMatchObject({ total_months: 3, months_applied: 1, status: "active", last_exp_date: exp.toISOString() });
-    expect(new Date(r.schedule.next_run_at).getTime()).toBe(exp.getTime() - DRIP_LEAD_DAYS * DAY);
+    expect(new Date(r.schedule.next_run_at!).getTime()).toBe(exp.getTime() - DRIP_LEAD_DAYS * DAY);
     expect(remainingMonths(r.schedule)).toBe(2);
   });
   it("vencimento a menos de 2 dias: próxima execução é imediata (nunca no passado)", () => {
     const soon = new Date(Date.now() + DAY);
     const r = manualScheduleRow({ total_months: 2, amount_reais: 50, activate_first_month_now: false }, soon);
-    expect(new Date(r.schedule.next_run_at).getTime()).toBeLessThanOrEqual(Date.now() + 1000);
+    expect(new Date(r.schedule.next_run_at!).getTime()).toBeLessThanOrEqual(Date.now() + 1000);
   });
   it("valida a entrada: mínimo 1 mês, usuário obrigatório, valores como texto", () => {
     const base = { panel_username: " joao ", total_months: "3", amount_reais: "150", activate_first_month_now: false };

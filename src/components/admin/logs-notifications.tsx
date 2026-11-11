@@ -6,8 +6,10 @@ import { ListSkeleton, Pager, PAGE_SIZE } from "@/components/admin/list-controls
 import { dtSP, Empty, ErrorState } from "@/routes/_authenticated/admin.index";
 
 const CHANNEL: Record<string, string> = {
-  telegram_admin: "Telegram (admin)",
-  telegram_seller: "Telegram (vendedor)",
+  telegram_admin: "Telegram — Venda Confirmada",
+  telegram_credit_alert: "Telegram — Alerta de Saldo Baixo",
+  telegram_renewal_failed: "Telegram — Alerta de Falha de Renovação",
+  telegram_seller: "Telegram — Notificação do Vendedor",
 };
 const STATUS: Record<string, string> = { sent: "Enviado", failed: "Falhou" };
 
@@ -46,7 +48,7 @@ export function NotificationLogs() {
                 <p className="font-medium">{CHANNEL[n.channel] ?? n.channel}</p>
                 <p className="text-xs text-muted-foreground">
                   {dtSP(n.created_at)}
-                  {n.orders?.panel_username ? ` · usuário ${n.orders.panel_username}` : ""}
+                  {n.orders?.panel_username ? ` · usuário ${n.orders.panel_username}` : " · Alerta operacional do sistema"}
                 </p>
               </div>
               {n.status === "sent" ? (

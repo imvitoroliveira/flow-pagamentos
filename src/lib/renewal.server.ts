@@ -208,6 +208,16 @@ export async function processDueRetries() {
 
 // ─── Fractional credits ("Futuros") ──────────────────────────────────────
 
+/** Audit trail for what the daily robot does on its own. Never allowed to break the renewal itself. */
+async function logRobot(sb: Awaited<ReturnType<typeof db>>, action: string, details: Record<string, unknown>, entityId?: string) {
+  try {
+    await sb.from("admin_audit_log").insert({
+      action, admin_email: "Robô de Renovações (Sistema)", details: details as never,
+      ...(entityId ? { entity: "credit_schedule", entity_id: entityId } : {}),
+    });
+  } catch (e) { console.error("[drip] audit log failed", (e as Error).message); }
+}
+
 /** Applies 1 month to a schedule. Claims the row first so concurrent runs can't double-apply. */
 export async function applyScheduleMonth(id: string, opts: { force?: boolean } = {}) {
   const sb = await db();
@@ -223,6 +233,9 @@ export async function applyScheduleMonth(id: string, opts: { force?: boolean } =
   if (!claimed?.length) return { ok: false, error: "Já está sendo processado" };
   const startedAt = Date.now();
   let user: PanelUser;
+  const logAuto = () => opts.force ? Promise.resolve() : logRobot(sb, "credit_schedule.auto_applied", {
+    username: s.panel_username, month_applied: s.months_applied + 1, total_months: s.total_months, remaining: s.total_months - (s.months_applied + 1),
+  }, s.id);
   try {
     user = await activate(s.panel_username, 1);
   } catch (e) {
@@ -232,6 +245,7 @@ export async function applyScheduleMonth(id: string, opts: { force?: boolean } =
       if (c.verdict === "applied") {
         console.warn("[drip] panel had applied the month despite the error", id);
         await recordScheduleApplied(sb, s, c.user, { recovered: true });
+        await logAuto();
         return { ok: true };
       }
       if (c.verdict === "unknown") {
@@ -256,6 +270,7 @@ export async function applyScheduleMonth(id: string, opts: { force?: boolean } =
   // The panel accepted the month. If saving fails or the process dies here, the row stays "running" and
   // recoverStaleSchedules() confirms with the panel instead of applying the month a second time.
   await recordScheduleApplied(sb, s, user);
+  await logAuto();
   return { ok: true };
 }
 
@@ -301,6 +316,7 @@ export async function processCreditSchedules() {
   let applied = 0, failed = 0;
   for (const r of due ?? []) { const res = await applyScheduleMonth(r.id); if (res.ok) applied++; else failed++; }
   await checkLowCreditsAlert();
+  await logRobot(sb, "drip.executed", { applied, failed, total_due: due?.length ?? 0 });
   return { applied, failed };
 }
 
