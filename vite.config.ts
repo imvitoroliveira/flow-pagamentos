@@ -21,7 +21,7 @@ export default defineConfig({
     define: {
       "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(PUBLIC_SUPABASE_URL),
       "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(PUBLIC_SUPABASE_KEY),
-      "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify("qgkmcfiuuelnmdaurjea"),
+      "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(process.env["VITE_SUPABASE_PROJECT_ID"] || "qgkmcfiuuelnmdaurjea"),
     },
   },
 });
