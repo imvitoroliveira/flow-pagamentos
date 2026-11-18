@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { authenticateCronRequest } from "@/integrations/supabase/cron-auth";
 
 // Daily job (08:00 America/Sao_Paulo = 11:00 UTC): applies the next month of every due "Futuros" schedule.
-// Kept apart from /api/public/reconcile-payments, which runs every 2 min for PIX payments and immediate retries.
+// Kept apart from /api/public/reconcile-payments, which runs hourly for PIX payments and immediate retries.
 export const Route = createFileRoute("/api/public/process-drip")({
   server: {
     handlers: {

@@ -4,7 +4,7 @@
 export const CLOSED_RECHECK_WINDOW_MS = 6 * 3_600_000;
 
 /**
- * Backoff for expired/cancelled orders, stateless (the reconcile cron runs every ~2 min):
+ * Backoff for expired/cancelled orders, stateless (the reconcile cron runs hourly):
  * < 30 min old → every run; < 2 h → once every 10 min; < 6 h → once every 30 min; older → never.
  */
 export function shouldRecheckClosedOrder(ageMs: number, nowMs: number): boolean {
