@@ -2,7 +2,7 @@
 //   POST /user/activation { username, months }  → renews (months: 1,2,3,4,5,6,12)
 //   POST /user/search     { username }          → list of matching users (partial match)
 import { sendTelegram } from "./checkout.server";
-import { looksApplied, manualScheduleRow, nextRunFor, scheduleStateAfterApply, type ManualScheduleInput } from "./drip-schedule";
+import { buildClientHistory, looksApplied, manualScheduleRow, nextRunFor, scheduleStateAfterApply, type ManualScheduleInput } from "./drip-schedule";
 
 export const RETRY_DELAYS_MIN = [1, 5, 15];
 const FAIL_RETRY_MIN = 30;
@@ -326,11 +326,16 @@ export async function lookupPanelAccount(username: string) {
   if (!user) return { found: false as const };
   const sb = await db();
   const { data: open } = await sb.from("credit_schedules").select("id, months_applied, total_months").eq("panel_username", user.username).in("status", ["active", "paused", "running"]);
+  // Histórico só para pré-preencher o formulário (somente leitura; pedidos anteriores nunca são alterados).
+  const { data: lastOrder } = await sb.from("orders").select("customer_name, customer_phone, amount_cents, created_at")
+    .ilike("panel_username", user.username).not("paid_at", "is", null).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  const { data: clientRow } = await sb.from("panel_clients").select("phone").ilike("username", user.username).maybeSingle();
   return {
     found: true as const,
     username: user.username,
     exp_date: user.exp_date ? new Date(user.exp_date * 1000).toISOString() : null,
     open_schedules: (open ?? []).length,
+    ...buildClientHistory(user.username, lastOrder, clientRow),
   };
 }
 

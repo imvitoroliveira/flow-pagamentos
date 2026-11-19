@@ -135,7 +135,7 @@ function ClientsPage() {
                       <td className="p-3">{c.connections ?? "—"}</td>
                       <td className="p-3">{c.phone ?? "—"}</td>
                       <td className="p-3 whitespace-nowrap text-muted-foreground">{fmtDate(c.last_seen_at)}</td>
-                      <td className="p-3"><ManualScheduleDialog defaultUsername={c.username} trigger={<Button variant="outline" className="h-11">Agendar Futuros</Button>} /></td>
+                      <td className="p-3"><ManualScheduleDialog defaultUsername={c.username} defaultPhone={c.phone ?? ""} autoVerify trigger={<Button variant="outline" className="h-11">Renovar / Agendar</Button>} /></td>
                     </tr>
                   );
                 })}
@@ -153,7 +153,7 @@ function ClientsPage() {
                   <div className="flex justify-between text-sm"><span className="text-muted-foreground">Telas / Telefone</span><span>{c.connections ?? "—"} · {c.phone ?? "—"}</span></div>
                   {c.blocked && <Tone tone="bad">Bloqueado</Tone>}
                   <FutureBadge schedule={futureByUser.get(c.username.toLowerCase())} />
-                  <ManualScheduleDialog defaultUsername={c.username} trigger={<Button variant="outline" className="h-11 w-full">Agendar Futuros</Button>} />
+                  <ManualScheduleDialog defaultUsername={c.username} defaultPhone={c.phone ?? ""} autoVerify trigger={<Button variant="outline" className="h-11 w-full">Renovar / Agendar</Button>} />
                 </Card>
               );
             })}

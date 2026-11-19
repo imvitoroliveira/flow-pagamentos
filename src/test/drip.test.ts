@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { manualScheduleSchema } from "@/lib/admin-schemas";
-import { DRIP_LEAD_DAYS, looksApplied, manualScheduleRow, nextRunFor, reaisToCents, remainingMonths, scheduleStateAfterApply } from "@/lib/drip-schedule";
+import { DRIP_LEAD_DAYS, looksApplied, buildClientHistory, centsToReaisText, fillFromHistory, manualScheduleRow, nextRunFor, reaisToCents, remainingMonths, scheduleStateAfterApply } from "@/lib/drip-schedule";
 
 const DAY = 86_400_000;
 
@@ -121,5 +121,30 @@ describe("agendamento manual (venda em espécie)", () => {
     expect(r.schedule.months_applied).toBe(1);
     expect(r.schedule.status).toBe("active");
     expect(remainingMonths(r.schedule)).toBe(2);
+  });
+});
+
+describe("auto-preenchimento a partir do histórico", () => {
+  it("formata centavos em reais pt-BR", () => {
+    expect(centsToReaisText(3500)).toBe("35,00");
+    expect(centsToReaisText(1990)).toBe("19,90");
+    expect(centsToReaisText(5)).toBe("0,05");
+  });
+  it("monta o histórico da última compra e preserva os campos de cliente recorrente", () => {
+    const h = buildClientHistory("matheus", { customer_name: "Matheus Lemos", customer_phone: "", amount_cents: 3500 }, { phone: "11999990000" });
+    expect(h).toMatchObject({ last_customer_name: "Matheus Lemos", last_customer_phone: "11999990000", last_amount_reais: "35,00", is_recurring: true });
+    const r = { found: true as const, username: "matheus", exp_date: null, open_schedules: 0, ...h };
+    expect(r.is_recurring).toBe(true);
+    expect(r.last_amount_reais).toBe("35,00");
+  });
+  it("nome igual ao usuário não conta como nome; sem histórico não é recorrente", () => {
+    expect(buildClientHistory("joao", { customer_name: "JOAO", customer_phone: "1", amount_cents: 100 }, null).last_customer_name).toBeNull();
+    const none = buildClientHistory("joao", null, null);
+    expect(none).toMatchObject({ last_customer_name: null, last_customer_phone: null, last_amount_reais: null, is_recurring: false });
+  });
+  it("só preenche campos vazios, sem sobrescrever o que o admin digitou", () => {
+    const h = { last_customer_name: "Matheus Lemos", last_customer_phone: "11999990000", last_amount_reais: "35,00" };
+    expect(fillFromHistory({ name: "", phone: "", amount: "" }, h)).toMatchObject({ name: "Matheus Lemos", phone: "11999990000", amount: "35,00" });
+    expect(fillFromHistory({ name: "Outro", phone: "", amount: "50" }, h)).toMatchObject({ name: "Outro", phone: "11999990000", amount: "50" });
   });
 });

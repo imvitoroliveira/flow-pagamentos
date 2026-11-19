@@ -74,3 +74,43 @@ export function manualScheduleRow(
     },
   };
 }
+
+/** 3500 → "35,00" (centavos inteiros → texto pt-BR para o campo de valor). */
+export function centsToReaisText(cents: number): string {
+  return (Math.round(cents) / 100).toFixed(2).replace(".", ",");
+}
+
+export type ClientHistory = {
+  last_customer_name: string | null;
+  last_customer_phone: string | null;
+  last_amount_reais: string | null;
+  is_recurring: boolean;
+};
+
+/** Dados da última compra / cadastro do cliente, para pré-preencher a venda manual. Nunca altera nada no banco. */
+export function buildClientHistory(
+  username: string,
+  lastOrder: { customer_name?: string | null; customer_phone?: string | null; amount_cents?: number | null } | null | undefined,
+  clientRow: { phone?: string | null } | null | undefined,
+): ClientHistory {
+  const name = lastOrder?.customer_name?.trim();
+  const phone = lastOrder?.customer_phone?.trim() || clientRow?.phone?.trim() || null;
+  return {
+    last_customer_name: name && name.toLowerCase() !== username.trim().toLowerCase() ? name : null,
+    last_customer_phone: phone,
+    last_amount_reais: lastOrder?.amount_cents ? centsToReaisText(lastOrder.amount_cents) : null,
+    is_recurring: Boolean(lastOrder || clientRow),
+  };
+}
+
+/** Preenche só o que estiver vazio: o que o admin já digitou nunca é sobrescrito. */
+export function fillFromHistory(
+  cur: { name: string; phone: string; amount: string },
+  h: Pick<ClientHistory, "last_customer_name" | "last_customer_phone" | "last_amount_reais">,
+) {
+  return {
+    name: cur.name.trim() ? cur.name : (h.last_customer_name ?? cur.name),
+    phone: cur.phone.trim() ? cur.phone : (h.last_customer_phone ?? cur.phone),
+    amount: cur.amount.trim() ? cur.amount : (h.last_amount_reais ?? cur.amount),
+  };
+}

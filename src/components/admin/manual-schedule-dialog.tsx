@@ -1,11 +1,11 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { CalendarClock, CheckCircle2, Loader2, Search } from "lucide-react";
+import { CalendarClock, CheckCircle2, Loader2, Search, Sparkles } from "lucide-react";
 import { createManualSchedule, lookupPanelAccount } from "@/lib/admin-actions.functions";
 import { manualScheduleSchema } from "@/lib/admin-schemas";
-import { nextRunFor } from "@/lib/drip-schedule";
+import { fillFromHistory, nextRunFor } from "@/lib/drip-schedule";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -14,9 +14,29 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const dt = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
 const QUICK = [1, 2, 3, 6];
-type Found = { username: string; exp_date: string | null; open_schedules: number };
+type Found = {
+  username: string;
+  exp_date: string | null;
+  open_schedules: number;
+  last_customer_name?: string | null;
+  last_customer_phone?: string | null;
+  last_amount_reais?: string | null;
+  is_recurring?: boolean;
+};
 
-export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultName = "" }: { trigger: ReactNode; defaultUsername?: string; defaultName?: string }) {
+export function ManualScheduleDialog({
+  trigger,
+  defaultUsername = "",
+  defaultName = "",
+  defaultPhone = "",
+  autoVerify = false,
+}: {
+  trigger: ReactNode;
+  defaultUsername?: string;
+  defaultName?: string;
+  defaultPhone?: string;
+  autoVerify?: boolean;
+}) {
   const qc = useQueryClient();
   const lookup = useServerFn(lookupPanelAccount);
   const create = useServerFn(createManualSchedule);
@@ -28,13 +48,15 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
   const [activateNow, setActivateNow] = useState(false);
   const [amount, setAmount] = useState("");
   const [name, setName] = useState(defaultName);
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(defaultPhone);
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const autoTried = useRef(false);
+
   function reset() {
-    setUsername(defaultUsername); setFound(null); setMonths("3"); setActivateNow(false); setAmount(""); setName(defaultName); setPhone(""); setNotes(""); setErrors({});
+    setUsername(defaultUsername); setFound(null); setMonths("3"); setActivateNow(false); setAmount(""); setName(defaultName); setPhone(defaultPhone); setNotes(""); setErrors({}); autoTried.current = false;
   }
 
   async function verify() {
@@ -46,8 +68,23 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
     if (!r.ok) { toast.error(r.error); return; }
     if (!r.found) { setErrors({ panel_username: "Usuário não encontrado no painel NATV" }); return; }
     setErrors({}); setUsername(r.username);
-    setFound({ username: r.username, exp_date: r.exp_date, open_schedules: r.open_schedules });
+    setFound({
+      username: r.username, exp_date: r.exp_date, open_schedules: r.open_schedules,
+      last_customer_name: r.last_customer_name, last_customer_phone: r.last_customer_phone,
+      last_amount_reais: r.last_amount_reais, is_recurring: r.is_recurring,
+    });
+    // Só preenche campos vazios; o que o admin digitou antes de verificar fica como está.
+    const filled = fillFromHistory({ name, phone, amount }, r);
+    setName(filled.name); setPhone(filled.phone); setAmount(filled.amount);
   }
+
+  useEffect(() => {
+    if (open && autoVerify && username.trim() && !found && !checking && !autoTried.current) {
+      autoTried.current = true;
+      void verify();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoVerify, username, found, checking]);
 
   const n = Number(months);
   const validN = Number.isInteger(n) && n >= 1;
@@ -95,6 +132,7 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
             </div>
             {err("panel_username")}
             {found && (
+              <>
               <div className="flex items-start gap-2 rounded-md border border-primary/40 bg-primary/10 p-2 text-sm">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div>
@@ -102,6 +140,13 @@ export function ManualScheduleDialog({ trigger, defaultUsername = "", defaultNam
                   {found.open_schedules > 0 && <p className="text-amber-500">Atenção: já existe {found.open_schedules} agendamento(s) em aberto para este usuário.</p>}
                 </div>
               </div>
+              {found.is_recurring && (found.last_customer_name || found.last_customer_phone) && (
+                <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs text-primary">
+                  <Sparkles className="h-4 w-4 shrink-0" />
+                  <span>Cliente recorrente identificado! Dados preenchidos com base no histórico anterior. Você pode alterá-los livremente se necessário.</span>
+                </div>
+              )}
+              </>
             )}
           </div>
 
