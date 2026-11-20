@@ -1,0 +1,13 @@
+{
+  "manifest_version": 3,
+  "name": "TOP TV - WhatsApp Bridge",
+  "version": "1.0.0",
+  "description": "Ponte de automação de cobrança entre o painel TOP TV e o WhatsApp Web",
+  "permissions": ["tabs", "storage"],
+  "host_permissions": ["https://web.whatsapp.com/*", "https://*.lovable.app/*", "http://localhost:*/*"],
+  "content_scripts": [
+    { "matches": ["https://*.lovable.app/*", "http://localhost:*/*"], "js": ["panel-bridge.js"] },
+    { "matches": ["https://web.whatsapp.com/*"], "js": ["whatsapp-content.js"] }
+  ],
+  "background": { "service_worker": "background.js" }
+}
