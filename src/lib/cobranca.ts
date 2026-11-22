@@ -56,10 +56,10 @@ export type QueueItem = {
 export function buildQueue(opts: {
   clients: CobrancaClient[];
   scheduledUsernames: Iterable<string>;
-  names?: Map<string, string>;
-  templates?: Templates;
+  names?: Map<string, string> | undefined;
+  templates?: Templates | undefined;
   link: string;
-  now?: Date;
+  now?: Date | undefined;
 }): QueueItem[] {
   const now = opts.now ?? new Date();
   const tpls = opts.templates ?? DEFAULT_TEMPLATES;
