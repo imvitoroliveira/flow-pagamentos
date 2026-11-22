@@ -16,6 +16,7 @@ import { Route as PagarRouteImport } from './routes/pagar'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
+import { Route as LpSlugRouteImport } from './routes/lp.$slug'
 import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
@@ -25,11 +26,14 @@ import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_a
 import { Route as AuthenticatedAdminFunilRouteImport } from './routes/_authenticated/admin.funil'
 import { Route as AuthenticatedAdminFuturosRouteImport } from './routes/_authenticated/admin.futuros'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
+import { Route as AuthenticatedAdminLpsRouteImport } from './routes/_authenticated/admin.lps'
 import { Route as AuthenticatedAdminPedidosRouteImport } from './routes/_authenticated/admin.pedidos'
 import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_authenticated/admin.vendedores'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
+import { Route as ApiPublicLpLeadRouteImport } from './routes/api/public/lp-lead'
+import { Route as ApiPublicLpViewRouteImport } from './routes/api/public/lp-view'
 import { Route as ApiPublicProcessDripRouteImport } from './routes/api/public/process-drip'
 import { Route as ApiPublicReconcilePaymentsRouteImport } from './routes/api/public/reconcile-payments'
 import { Route as ApiPublicRenewalRetriesRouteImport } from './routes/api/public/renewal-retries'
@@ -67,6 +71,11 @@ const AuthenticatedVendedorRoute = AuthenticatedVendedorRouteImport.update({
   id: '/vendedor',
   path: '/vendedor',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const LpSlugRoute = LpSlugRouteImport.update({
+  id: '/lp/$slug',
+  path: '/lp/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const RSlugRoute = RSlugRouteImport.update({
   id: '/r/$slug',
@@ -118,6 +127,11 @@ const AuthenticatedAdminLogsRoute = AuthenticatedAdminLogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminLpsRoute = AuthenticatedAdminLpsRouteImport.update({
+  id: '/lps',
+  path: '/lps',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminPedidosRoute =
   AuthenticatedAdminPedidosRouteImport.update({
     id: '/pedidos',
@@ -147,6 +161,16 @@ const ApiPublicCreatePaymentRoute = ApiPublicCreatePaymentRouteImport.update({
   path: '/api/public/create-payment',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicLpLeadRoute = ApiPublicLpLeadRouteImport.update({
+  id: '/api/public/lp-lead',
+  path: '/api/public/lp-lead',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicLpViewRoute = ApiPublicLpViewRouteImport.update({
+  id: '/api/public/lp-view',
+  path: '/api/public/lp-view',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicProcessDripRoute = ApiPublicProcessDripRouteImport.update({
   id: '/api/public/process-drip',
   path: '/api/public/process-drip',
@@ -171,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/vendedor': typeof AuthenticatedVendedorRoute
+  '/lp/$slug': typeof LpSlugRoute
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -179,11 +204,14 @@ export interface FileRoutesByFullPath {
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/admin/lps': typeof AuthenticatedAdminLpsRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
+  '/api/public/lp-view': typeof ApiPublicLpViewRoute
   '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
@@ -195,6 +223,7 @@ export interface FileRoutesByTo {
   '/pagar': typeof PagarRoute
   '/reset-password': typeof ResetPasswordRoute
   '/vendedor': typeof AuthenticatedVendedorRoute
+  '/lp/$slug': typeof LpSlugRoute
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -203,11 +232,14 @@ export interface FileRoutesByTo {
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/admin/lps': typeof AuthenticatedAdminLpsRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
+  '/api/public/lp-view': typeof ApiPublicLpViewRoute
   '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
@@ -222,6 +254,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
+  '/lp/$slug': typeof LpSlugRoute
   '/r/$slug': typeof RSlugRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
@@ -230,11 +263,14 @@ export interface FileRoutesById {
   '/_authenticated/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/_authenticated/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
+  '/_authenticated/admin/lps': typeof AuthenticatedAdminLpsRoute
   '/_authenticated/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/_authenticated/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
+  '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
+  '/api/public/lp-view': typeof ApiPublicLpViewRoute
   '/api/public/process-drip': typeof ApiPublicProcessDripRoute
   '/api/public/reconcile-payments': typeof ApiPublicReconcilePaymentsRoute
   '/api/public/renewal-retries': typeof ApiPublicRenewalRetriesRoute
@@ -249,6 +285,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/admin'
     | '/vendedor'
+    | '/lp/$slug'
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -257,11 +294,14 @@ export interface FileRouteTypes {
     | '/admin/funil'
     | '/admin/futuros'
     | '/admin/logs'
+    | '/admin/lps'
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/lp-lead'
+    | '/api/public/lp-view'
     | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
@@ -273,6 +313,7 @@ export interface FileRouteTypes {
     | '/pagar'
     | '/reset-password'
     | '/vendedor'
+    | '/lp/$slug'
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
@@ -281,11 +322,14 @@ export interface FileRouteTypes {
     | '/admin/funil'
     | '/admin/futuros'
     | '/admin/logs'
+    | '/admin/lps'
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/lp-lead'
+    | '/api/public/lp-view'
     | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
@@ -299,6 +343,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/_authenticated/admin'
     | '/_authenticated/vendedor'
+    | '/lp/$slug'
     | '/r/$slug'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/clientes'
@@ -307,11 +352,14 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/funil'
     | '/_authenticated/admin/futuros'
     | '/_authenticated/admin/logs'
+    | '/_authenticated/admin/lps'
     | '/_authenticated/admin/pedidos'
     | '/_authenticated/admin/vendedores'
     | '/api/public/abacatepay-webhook'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
+    | '/api/public/lp-lead'
+    | '/api/public/lp-view'
     | '/api/public/process-drip'
     | '/api/public/reconcile-payments'
     | '/api/public/renewal-retries'
@@ -324,10 +372,13 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   PagarRoute: typeof PagarRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  LpSlugRoute: typeof LpSlugRoute
   RSlugRoute: typeof RSlugRoute
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
   ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
+  ApiPublicLpLeadRoute: typeof ApiPublicLpLeadRoute
+  ApiPublicLpViewRoute: typeof ApiPublicLpViewRoute
   ApiPublicProcessDripRoute: typeof ApiPublicProcessDripRoute
   ApiPublicReconcilePaymentsRoute: typeof ApiPublicReconcilePaymentsRoute
   ApiPublicRenewalRetriesRoute: typeof ApiPublicRenewalRetriesRoute
@@ -383,6 +434,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/vendedor'
       preLoaderRoute: typeof AuthenticatedVendedorRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/lp/$slug': {
+      id: '/lp/$slug'
+      path: '/lp/$slug'
+      fullPath: '/lp/$slug'
+      preLoaderRoute: typeof LpSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/r/$slug': {
       id: '/r/$slug'
@@ -447,6 +505,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLogsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/lps': {
+      id: '/_authenticated/admin/lps'
+      path: '/lps'
+      fullPath: '/admin/lps'
+      preLoaderRoute: typeof AuthenticatedAdminLpsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/pedidos': {
       id: '/_authenticated/admin/pedidos'
       path: '/pedidos'
@@ -482,6 +547,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCreatePaymentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/lp-lead': {
+      id: '/api/public/lp-lead'
+      path: '/api/public/lp-lead'
+      fullPath: '/api/public/lp-lead'
+      preLoaderRoute: typeof ApiPublicLpLeadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/lp-view': {
+      id: '/api/public/lp-view'
+      path: '/api/public/lp-view'
+      fullPath: '/api/public/lp-view'
+      preLoaderRoute: typeof ApiPublicLpViewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/process-drip': {
       id: '/api/public/process-drip'
       path: '/api/public/process-drip'
@@ -514,6 +593,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminFunilRoute: typeof AuthenticatedAdminFunilRoute
   AuthenticatedAdminFuturosRoute: typeof AuthenticatedAdminFuturosRoute
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
+  AuthenticatedAdminLpsRoute: typeof AuthenticatedAdminLpsRoute
   AuthenticatedAdminPedidosRoute: typeof AuthenticatedAdminPedidosRoute
   AuthenticatedAdminVendedoresRoute: typeof AuthenticatedAdminVendedoresRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -527,6 +607,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminFunilRoute: AuthenticatedAdminFunilRoute,
   AuthenticatedAdminFuturosRoute: AuthenticatedAdminFuturosRoute,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
+  AuthenticatedAdminLpsRoute: AuthenticatedAdminLpsRoute,
   AuthenticatedAdminPedidosRoute: AuthenticatedAdminPedidosRoute,
   AuthenticatedAdminVendedoresRoute: AuthenticatedAdminVendedoresRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
@@ -554,10 +635,13 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   PagarRoute: PagarRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  LpSlugRoute: LpSlugRoute,
   RSlugRoute: RSlugRoute,
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
   ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
+  ApiPublicLpLeadRoute: ApiPublicLpLeadRoute,
+  ApiPublicLpViewRoute: ApiPublicLpViewRoute,
   ApiPublicProcessDripRoute: ApiPublicProcessDripRoute,
   ApiPublicReconcilePaymentsRoute: ApiPublicReconcilePaymentsRoute,
   ApiPublicRenewalRetriesRoute: ApiPublicRenewalRetriesRoute,

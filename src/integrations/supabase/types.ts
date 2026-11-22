@@ -319,6 +319,80 @@ export type Database = {
         }
         Relationships: []
       }
+      landing_pages: {
+        Row: {
+          active: boolean
+          badge_top: string | null
+          benefits: Json
+          campaign_id: string | null
+          created_at: string
+          cta_subtext: string | null
+          cta_text: string
+          faq: Json
+          headline: string
+          id: string
+          leads_count: number
+          meta_pixel_id: string | null
+          slug: string
+          subheadline: string | null
+          title: string
+          updated_at: string
+          views_count: number
+          whatsapp_message: string | null
+          whatsapp_number: string | null
+        }
+        Insert: {
+          active?: boolean
+          badge_top?: string | null
+          benefits?: Json
+          campaign_id?: string | null
+          created_at?: string
+          cta_subtext?: string | null
+          cta_text?: string
+          faq?: Json
+          headline: string
+          id?: string
+          leads_count?: number
+          meta_pixel_id?: string | null
+          slug: string
+          subheadline?: string | null
+          title: string
+          updated_at?: string
+          views_count?: number
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Update: {
+          active?: boolean
+          badge_top?: string | null
+          benefits?: Json
+          campaign_id?: string | null
+          created_at?: string
+          cta_subtext?: string | null
+          cta_text?: string
+          faq?: Json
+          headline?: string
+          id?: string
+          leads_count?: number
+          meta_pixel_id?: string | null
+          slug?: string
+          subheadline?: string | null
+          title?: string
+          updated_at?: string
+          views_count?: number
+          whatsapp_message?: string | null
+          whatsapp_number?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "landing_pages_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications_log: {
         Row: {
           channel: string
@@ -790,6 +864,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      lp_bump: { Args: { p_id: string; p_lead: boolean }; Returns: undefined }
       my_seller_id: { Args: never; Returns: string }
     }
     Enums: {
