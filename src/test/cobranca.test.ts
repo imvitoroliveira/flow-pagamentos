@@ -56,6 +56,11 @@ describe("buildQueue", () => {
   it("ignora Futuros ativos, bloqueados, fora da régua e sem data", () => {
     expect(q.map((i) => i.username)).toEqual(["ana", "bia", "caio"]);
   });
+  it("quem pagou/renovou recentemente fica fora, sem diferenciar maiúsculas", () => {
+    const r = buildQueue({ clients, scheduledUsernames: [], recentlyPaidUsernames: new Set(["ANA", "caio"]), link: "https://s", now: NOW });
+    expect(r.map((i) => i.username)).toEqual(["futuro", "bia"]);
+    expect(buildQueue({ clients, scheduledUsernames: [], recentlyPaidUsernames: undefined, link: "https://s", now: NOW }).length).toBe(4);
+  });
   it("monta texto, nome e telefone", () => {
     const ana = q[0]!;
     expect(ana).toMatchObject({ regua: "d3", phone: "5511999998888", name: "Ana Souza" });

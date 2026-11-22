@@ -57,13 +57,15 @@ export function buildQueue(opts: {
   clients: CobrancaClient[];
   scheduledUsernames: Iterable<string>;
   names?: Map<string, string> | undefined;
+  /** Pagaram/renovaram recentemente: nunca entram na cobrança, mesmo com vencimento local desatualizado. */
+  recentlyPaidUsernames?: Iterable<string> | undefined;
   templates?: Templates | undefined;
   link: string;
   now?: Date | undefined;
 }): QueueItem[] {
   const now = opts.now ?? new Date();
   const tpls = opts.templates ?? DEFAULT_TEMPLATES;
-  const skip = new Set([...opts.scheduledUsernames].map((u) => u.toLowerCase()));
+  const skip = new Set([...opts.scheduledUsernames, ...(opts.recentlyPaidUsernames ?? [])].map((u) => u.toLowerCase()));
   const out: QueueItem[] = [];
   for (const c of opts.clients) {
     if (c.blocked || !c.expires_at || skip.has(c.username.toLowerCase())) continue;

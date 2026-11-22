@@ -1,6 +1,7 @@
 // Service worker: controla a fila e usa a MESMA aba do WhatsApp Web (nunca abre abas novas).
-// A navegação para o chat é feita aqui (chrome.tabs.update) porque recarregar a página a partir do content script
-// destruiria o próprio script antes de ele poder responder.
+// Caminho normal: o content script abre a conversa pela busca do próprio WhatsApp, SEM recarregar a página.
+// Reserva (só quando a conversa não é encontrada na busca, ex.: número que ainda não é contato): abre
+// …/send?phone=… nesta mesma aba. Isso recarrega, por isso é feito aqui (o content script morreria no reload).
 let running = false;
 let stopRequested = false;
 
@@ -17,10 +18,10 @@ function waitTabComplete(tabId, timeoutMs = 45000) {
   });
 }
 
-async function sendToContent(tabId, data, tries = 8) {
+async function sendToContent(tabId, message, tries = 3) {
   // O content script injeta logo após o carregamento; tenta algumas vezes.
   for (let i = 0; i < tries; i++) {
-    try { return await chrome.tabs.sendMessage(tabId, { action: "SEND_MESSAGE", data }); }
+    try { return await chrome.tabs.sendMessage(tabId, message); }
     catch { await sleep(1000); }
   }
   return { ok: false, status: "error", error: "Não consegui falar com a aba do WhatsApp Web (recarregue-a)." };
@@ -36,6 +37,9 @@ async function runQueue(panelTabId, payload) {
   const wa = tabs[0];
   if (!wa || wa.id === undefined) { say({ type: "TOPTV_ERROR", message: "Abra o WhatsApp Web em outra aba antes de iniciar" }); return; }
 
+  // Só na primeira mensagem: garante que a aba do WhatsApp está carregada (nas demais não se mexe na aba).
+  if (wa.discarded || wa.status !== "complete") { await chrome.tabs.reload(wa.id); await waitTabComplete(wa.id); }
+
   running = true; stopRequested = false;
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(() => {}), 20000); // mantém o service worker vivo
   try {
@@ -45,9 +49,12 @@ async function runQueue(panelTabId, payload) {
       const base = { current: i + 1, total: items.length, username: it.username };
       say({ type: "TOPTV_PROGRESS", ...base, status: "sending" });
 
-      await chrome.tabs.update(wa.id, { url: `https://web.whatsapp.com/send?phone=${encodeURIComponent(it.phone)}&text=${encodeURIComponent(it.text)}` });
-      await waitTabComplete(wa.id);
-      const res = await sendToContent(wa.id, { phone: it.phone });
+      let res = await sendToContent(wa.id, { action: "SEND_CHAT_MESSAGE", phone: it.phone, text: it.text });
+      if (!res.ok && (res.status === "chat_not_found" || res.status === "ui_missing")) {
+        await chrome.tabs.update(wa.id, { url: `https://web.whatsapp.com/send?phone=${encodeURIComponent(it.phone)}&text=${encodeURIComponent(it.text)}` });
+        await waitTabComplete(wa.id);
+        res = await sendToContent(wa.id, { action: "SEND_MESSAGE", data: { phone: it.phone } }, 8);
+      }
       say({ type: "TOPTV_PROGRESS", ...base, status: res.ok ? "sent" : (res.status || "error"), error: res.error });
 
       if (i < items.length - 1) {

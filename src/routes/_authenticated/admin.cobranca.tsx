@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, CircleHelp, Copy, Download, Loader2, MessageCircle, Square, TriangleAlert } from "lucide-react";
+import { Check, CircleHelp, Copy, Download, Loader2, MessageCircle, RefreshCw, Square, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { syncClients } from "@/lib/admin-actions.functions";
 import { publicUrl } from "@/lib/site-url";
 import { buildQueue, DEFAULT_TEMPLATES, formatBatch, fmtVencimento, REGUA_LABEL, waLink, type QueueItem, type Regua, type Templates } from "@/lib/cobranca";
 import { Button } from "@/components/ui/button";
@@ -46,7 +48,12 @@ async function copy(text: string, ok: string) {
   try { await navigator.clipboard.writeText(text); toast.success(ok); } catch { toast.error("Não foi possível copiar"); }
 }
 
+const RECENT_DAYS = 25;
+
 function CobrancaPage() {
+  const qc = useQueryClient();
+  const sync = useServerFn(syncClients);
+  const [syncing, setSyncing] = useState(false);
   const [tab, setTab] = useState<Tab>("todos");
   const [templates, setTemplates] = useState<Templates>(DEFAULT_TEMPLATES);
   const [campaignSlug, setCampaignSlug] = useState("");
@@ -86,6 +93,20 @@ function CobrancaPage() {
       return m;
     },
   });
+  // Quem pagou/renovou há pouco nunca recebe cobrança (o vencimento local pode estar defasado até a próxima sincronização).
+  const recent = useQuery({
+    queryKey: ["cobranca_recent_paid"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - RECENT_DAYS * 86_400_000).toISOString();
+      const [o, s] = await Promise.all([
+        supabase.from("orders").select("panel_username").in("status", ["paid", "renewed", "renewal_failed"]).or(`paid_at.gte.${since},created_at.gte.${since}`).limit(5000),
+        supabase.from("credit_schedules").select("panel_username").gte("created_at", since).limit(5000),
+      ]);
+      if (o.error) throw o.error;
+      if (s.error) throw s.error;
+      return [...o.data, ...s.data].map((r) => r.panel_username);
+    },
+  });
   const campaigns = useQuery({
     queryKey: ["cobranca_campaigns"],
     queryFn: async () => {
@@ -112,8 +133,8 @@ function CobrancaPage() {
   }, [campaigns.data, campaignSlug]);
 
   const queue = useMemo<QueueItem[]>(() => buildQueue({
-    clients: clients.data ?? [], scheduledUsernames: (schedules.data ?? []).map((s) => s.panel_username), names: names.data, templates, link,
-  }), [clients.data, schedules.data, names.data, templates, link]);
+    clients: clients.data ?? [], scheduledUsernames: (schedules.data ?? []).map((s) => s.panel_username), recentlyPaidUsernames: recent.data, names: names.data, templates, link,
+  }), [clients.data, schedules.data, recent.data, names.data, templates, link]);
 
   const counts = useMemo(() => {
     const c: Record<Tab, number> = { todos: queue.length, d3: 0, d1: 0, d0: 0, vencido: 0 };
@@ -124,10 +145,12 @@ function CobrancaPage() {
   const sendable = rows.filter((i) => i.phone && !off.has(i.username));
 
   // ── Extensão ──────────────────────────────────────────────────────────────
-  const ping = useCallback(() => window.postMessage({ source: "toptv-panel", type: "TOPTV_PING" }, window.location.origin), []);
+  const ping = useCallback(() => {
+    // Várias tentativas: a extensão pode ainda não estar escutando (Brave/Chrome injetam em momentos diferentes).
+    for (const ms of [0, 500, 1500]) setTimeout(() => window.postMessage({ source: "toptv-panel", type: "TOPTV_PING" }, "*"), ms);
+  }, []);
   useEffect(() => {
     function onMsg(ev: MessageEvent) {
-      if (ev.source !== window || ev.origin !== window.location.origin) return;
       const d = ev.data as { source?: string; type?: string; username?: string; status?: string; current?: number; total?: number; message?: string; stopped?: boolean } | null;
       if (!d || d.source !== "toptv-extension") return;
       if (d.type === "TOPTV_PONG") setExtOk(true);
@@ -140,8 +163,7 @@ function CobrancaPage() {
     }
     window.addEventListener("message", onMsg);
     ping();
-    const t = setTimeout(ping, 1200);
-    return () => { window.removeEventListener("message", onMsg); clearTimeout(t); };
+    return () => { window.removeEventListener("message", onMsg); };
   }, [ping]);
 
   function start() {
@@ -153,9 +175,9 @@ function CobrancaPage() {
     window.postMessage({
       source: "toptv-panel", type: "TOPTV_START_QUEUE",
       payload: { delayMin: min, delayMax: max, items: sendable.map((i) => ({ username: i.username, name: i.name, phone: i.phone, text: i.text })) },
-    }, window.location.origin);
+    }, "*");
   }
-  function stop() { window.postMessage({ source: "toptv-panel", type: "TOPTV_STOP_QUEUE" }, window.location.origin); }
+  function stop() { window.postMessage({ source: "toptv-panel", type: "TOPTV_STOP_QUEUE" }, "*"); }
 
   function saveTemplate(r: Regua, v: string) {
     const next = { ...templates, [r]: v };
@@ -167,8 +189,19 @@ function CobrancaPage() {
     try { localStorage.removeItem(TPL_KEY); } catch { /* sem storage */ }
   }
 
-  const loading = clients.isLoading || schedules.isLoading;
-  const failed = clients.isError || schedules.isError;
+  async function syncNow() {
+    setSyncing(true);
+    try {
+      const r = await sync();
+      if (r && "ok" in r && r.ok === false) { toast.error(r.error); return; }
+      toast.success("Vencimentos atualizados com o painel NATV");
+      await qc.invalidateQueries({ queryKey: ["cobranca_clients"] });
+      void qc.invalidateQueries({ queryKey: ["panel_clients"] });
+    } catch { toast.error("Não foi possível sincronizar. Tente de novo."); } finally { setSyncing(false); }
+  }
+
+  const loading = clients.isLoading || schedules.isLoading || recent.isLoading;
+  const failed = clients.isError || schedules.isError || recent.isError;
   const allOn = rows.length > 0 && rows.filter((i) => i.phone).every((i) => !off.has(i.username));
   const toggleAll = (on: boolean) => setOff((p) => { const n = new Set(p); for (const i of rows) { if (on) n.delete(i.username); else n.add(i.username); } return n; });
   const toggle = (u: string, on: boolean) => setOff((p) => { const n = new Set(p); if (on) n.delete(u); else n.add(u); return n; });
@@ -178,7 +211,7 @@ function CobrancaPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold">Cobrança &amp; Régua de Vencimentos</h1>
-          <p className="text-sm text-muted-foreground">Quem vence em 3 dias, amanhã, hoje ou venceu na última semana. Quem tem créditos futuros agendados não entra.</p>
+          <p className="text-sm text-muted-foreground">Quem vence em 3 dias, amanhã, hoje ou venceu na última semana. Quem tem créditos futuros agendados ou pagou nos últimos 25 dias não entra.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {extOk ? (
@@ -186,6 +219,9 @@ function CobrancaPage() {
           ) : (
             <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-500/50 px-4 text-sm text-amber-500"><TriangleAlert className="h-4 w-4" />Extensão não detectada</span>
           )}
+          <Button variant="outline" className="h-11" onClick={syncNow} disabled={syncing}>
+            {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}Sincronizar com Painel
+          </Button>
           {!extOk && <Button variant="outline" className="h-11" onClick={ping}>Verificar de novo</Button>}
           <HelpDialog />
         </div>
@@ -252,7 +288,7 @@ function CobrancaPage() {
       </Card>
 
       {loading ? <ListSkeleton /> : failed ? (
-        <Card className="p-6 text-center"><p>Não foi possível carregar a fila.</p><Button className="mt-3 h-11" onClick={() => { void clients.refetch(); void schedules.refetch(); }}>Tentar novamente</Button></Card>
+        <Card className="p-6 text-center"><p>Não foi possível carregar a fila.</p><Button className="mt-3 h-11" onClick={() => { void clients.refetch(); void schedules.refetch(); void recent.refetch(); }}>Tentar novamente</Button></Card>
       ) : !clients.data?.length ? (
         <Card className="p-6 text-center"><p className="font-medium">Nenhum cliente sincronizado.</p><p className="text-sm text-muted-foreground">Sincronize a base em Clientes → “Sincronizar com painel NATV”.</p></Card>
       ) : !rows.length ? (

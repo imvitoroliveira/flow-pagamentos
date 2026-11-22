@@ -157,6 +157,14 @@ export async function renewCustomer(orderId: string, opts: { attempt?: number; a
   return { ok: true };
 }
 
+/** Mantém o vencimento salvo em panel_clients igual ao do painel logo após uma ativação (a cobrança lê dali). Nunca falha a renovação. */
+async function syncLocalExpiry(sb: Awaited<ReturnType<typeof db>>, user: PanelUser) {
+  if (!user.exp_date) return;
+  try {
+    await sb.from("panel_clients").update({ expires_at: new Date(user.exp_date * 1000).toISOString() }).eq("username", user.username);
+  } catch (e) { console.error("[renewal] local expiry sync failed", user.username, (e as Error).message); }
+}
+
 async function recordRenewed(
   sb: Awaited<ReturnType<typeof db>>,
   orderId: string,
@@ -177,6 +185,7 @@ async function recordRenewed(
     console.error("[renew-customer] recorded after activation failed", orderId, upErr?.message, evErr?.message);
     return { ok: false, error };
   }
+  await syncLocalExpiry(sb, user);
   return { ok: true };
 }
 
@@ -285,6 +294,7 @@ async function recordScheduleApplied(sb: Awaited<ReturnType<typeof db>>, s: Sche
     last_error: null, alerted_at: null, updated_at: new Date().toISOString(),
   }).eq("id", s.id);
   if (error) { console.error("[drip] could not save applied month", s.id, error.message); return; }
+  await syncLocalExpiry(sb, user);
   await sb.from("events").insert({ order_id: s.order_id, type: "renewed", metadata: { months: 1, drip: true, month: next.months_applied, of: s.total_months, exp_date: user.exp_date ?? null, ...extra } });
 }
 
@@ -363,6 +373,7 @@ export async function registerManualSchedule(input: ManualScheduleInput & { admi
       after = c.user;
     }
     activated = true;
+    await syncLocalExpiry(sb, after);
     exp = after.exp_date ? new Date(after.exp_date * 1000) : exp;
   }
   if (!exp) throw new Error("O painel não informou a data de vencimento deste usuário.");
