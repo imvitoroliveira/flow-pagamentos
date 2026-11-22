@@ -20,6 +20,7 @@ import { Route as RSlugRouteImport } from './routes/r.$slug'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminCampanhasRouteImport } from './routes/_authenticated/admin.campanhas'
 import { Route as AuthenticatedAdminClientesRouteImport } from './routes/_authenticated/admin.clientes'
+import { Route as AuthenticatedAdminCobrancaRouteImport } from './routes/_authenticated/admin.cobranca'
 import { Route as AuthenticatedAdminConfiguracoesRouteImport } from './routes/_authenticated/admin.configuracoes'
 import { Route as AuthenticatedAdminFunilRouteImport } from './routes/_authenticated/admin.funil'
 import { Route as AuthenticatedAdminFuturosRouteImport } from './routes/_authenticated/admin.futuros'
@@ -87,6 +88,12 @@ const AuthenticatedAdminClientesRoute =
   AuthenticatedAdminClientesRouteImport.update({
     id: '/clientes',
     path: '/clientes',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminCobrancaRoute =
+  AuthenticatedAdminCobrancaRouteImport.update({
+    id: '/cobranca',
+    path: '/cobranca',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminConfiguracoesRoute =
@@ -167,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/cobranca': typeof AuthenticatedAdminCobrancaRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
@@ -190,6 +198,7 @@ export interface FileRoutesByTo {
   '/r/$slug': typeof RSlugRoute
   '/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/admin/cobranca': typeof AuthenticatedAdminCobrancaRoute
   '/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
@@ -216,6 +225,7 @@ export interface FileRoutesById {
   '/r/$slug': typeof RSlugRoute
   '/_authenticated/admin/campanhas': typeof AuthenticatedAdminCampanhasRoute
   '/_authenticated/admin/clientes': typeof AuthenticatedAdminClientesRoute
+  '/_authenticated/admin/cobranca': typeof AuthenticatedAdminCobrancaRoute
   '/_authenticated/admin/configuracoes': typeof AuthenticatedAdminConfiguracoesRoute
   '/_authenticated/admin/funil': typeof AuthenticatedAdminFunilRoute
   '/_authenticated/admin/futuros': typeof AuthenticatedAdminFuturosRoute
@@ -242,6 +252,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
+    | '/admin/cobranca'
     | '/admin/configuracoes'
     | '/admin/funil'
     | '/admin/futuros'
@@ -265,6 +276,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/admin/campanhas'
     | '/admin/clientes'
+    | '/admin/cobranca'
     | '/admin/configuracoes'
     | '/admin/funil'
     | '/admin/futuros'
@@ -290,6 +302,7 @@ export interface FileRouteTypes {
     | '/r/$slug'
     | '/_authenticated/admin/campanhas'
     | '/_authenticated/admin/clientes'
+    | '/_authenticated/admin/cobranca'
     | '/_authenticated/admin/configuracoes'
     | '/_authenticated/admin/funil'
     | '/_authenticated/admin/futuros'
@@ -399,6 +412,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminClientesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/cobranca': {
+      id: '/_authenticated/admin/cobranca'
+      path: '/cobranca'
+      fullPath: '/admin/cobranca'
+      preLoaderRoute: typeof AuthenticatedAdminCobrancaRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/configuracoes': {
       id: '/_authenticated/admin/configuracoes'
       path: '/configuracoes'
@@ -489,6 +509,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCampanhasRoute: typeof AuthenticatedAdminCampanhasRoute
   AuthenticatedAdminClientesRoute: typeof AuthenticatedAdminClientesRoute
+  AuthenticatedAdminCobrancaRoute: typeof AuthenticatedAdminCobrancaRoute
   AuthenticatedAdminConfiguracoesRoute: typeof AuthenticatedAdminConfiguracoesRoute
   AuthenticatedAdminFunilRoute: typeof AuthenticatedAdminFunilRoute
   AuthenticatedAdminFuturosRoute: typeof AuthenticatedAdminFuturosRoute
@@ -501,6 +522,7 @@ interface AuthenticatedAdminRouteChildren {
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCampanhasRoute: AuthenticatedAdminCampanhasRoute,
   AuthenticatedAdminClientesRoute: AuthenticatedAdminClientesRoute,
+  AuthenticatedAdminCobrancaRoute: AuthenticatedAdminCobrancaRoute,
   AuthenticatedAdminConfiguracoesRoute: AuthenticatedAdminConfiguracoesRoute,
   AuthenticatedAdminFunilRoute: AuthenticatedAdminFunilRoute,
   AuthenticatedAdminFuturosRoute: AuthenticatedAdminFuturosRoute,
