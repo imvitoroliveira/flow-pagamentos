@@ -11,7 +11,7 @@ export const Route = createFileRoute("/api/public/lp-lead")({
         try {
           const { registerLead, readRequestInfo } = await import("@/lib/landing.server");
           const { publicUrl } = await import("@/lib/site-url");
-          return Response.json(await registerLead(slug, body ?? {}, readRequestInfo(request), publicUrl(`/lp/${slug}`)));
+          return Response.json(await registerLead(slug, (body ?? {}) as import("@/lib/landing.server").LeadBody, readRequestInfo(request), publicUrl(`/lp/${slug}`)));
         } catch (e) {
           console.error("[lp-lead]", (e as Error).message);
           return Response.json({ ok: false }, { status: 500 });
