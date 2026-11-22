@@ -4,6 +4,7 @@ import { Check, ChevronDown, Headset, MessageCircle, ShieldCheck, Smartphone, St
 import { getLandingPage } from "@/lib/landing.functions";
 import { buildWhatsappUrl, DEVICES, type PublicLanding } from "@/lib/landing";
 import { initPixel, readCookie, trackPixel } from "@/lib/meta-pixel";
+import { readStoredRef, REF_KEY, serializeRef, shouldStoreRef } from "@/lib/ref-storage";
 
 // Public, mobile-first landing page for ads: Meta Ads → LP → WhatsApp. Everything above the fold is server-rendered.
 export const Route = createFileRoute("/lp/$slug")({
@@ -24,6 +25,14 @@ const ICONS: Record<string, LucideIcon> = { tv: Tv, zap: Zap, headset: Headset, 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const refKey = (slug: string) => `natv_lp_ref_${slug}`;
 
+/** Mirrors the ref into localStorage (what /pagar reads), so a later /pagar without ?ref= still attributes the sale. */
+function persistRef(ref: string, fresh: boolean) {
+  try {
+    const now = Date.now();
+    if (shouldStoreRef(readStoredRef(localStorage.getItem(REF_KEY), now), ref, fresh)) localStorage.setItem(REF_KEY, serializeRef(ref, now));
+  } catch { /* storage bloqueado */ }
+}
+
 function LandingPage() {
   const lp: PublicLanding = Route.useLoaderData();
   const refPromise = useRef<Promise<string | null> | null>(null);
@@ -41,7 +50,7 @@ function LandingPage() {
       body: JSON.stringify({ slug: lp.slug, fbclid: new URLSearchParams(window.location.search).get("fbclid") }),
     }).then((r) => (r.ok ? r.json() : null)).then((j: { ref?: string | null } | null) => {
       const ref = j?.ref ?? null;
-      if (ref) { try { sessionStorage.setItem(refKey(lp.slug), ref); } catch { /* sem storage */ } }
+      if (ref) { try { sessionStorage.setItem(refKey(lp.slug), ref); } catch { /* sem storage */ } persistRef(ref, true); }
       return ref;
     }).catch(() => null);
   }, [lp.pixelId, lp.slug]);
@@ -50,6 +59,7 @@ function LandingPage() {
     if (busy || !lp.whatsapp) return;
     setBusy(true);
     const ref = refPromise.current ? await Promise.race([refPromise.current, sleep(1200).then(() => null)]) : null;
+    if (ref) persistRef(ref, false); // renews the window without overriding a newer ref
     if (!leadSent.current) {
       leadSent.current = true; // only the first tap counts as a lead
       const eventId = `lp_${ref ?? "x"}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;

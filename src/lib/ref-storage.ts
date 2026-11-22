@@ -17,3 +17,14 @@ export function readStoredRef(raw: string | null, nowMs: number): string | null 
     return null;
   }
 }
+
+/**
+ * Whether a ref code may be written to localStorage. A fresh ad click always wins (last click wins, as in /pagar?ref=);
+ * a re-save (e.g. tapping the WhatsApp button again) only renews the same ref or fills an empty slot, so it can never
+ * overwrite a newer ref the visitor got in between.
+ */
+export function shouldStoreRef(current: string | null, incoming: string, fresh: boolean): boolean {
+  if (!incoming.trim()) return false;
+  if (fresh) return true;
+  return current === null || current === incoming.trim().toUpperCase().slice(0, 16);
+}

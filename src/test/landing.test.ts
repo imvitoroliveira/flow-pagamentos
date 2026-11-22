@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "crypto";
 import { landingPageSchema } from "@/lib/admin-schemas";
 import { buildLeadEvent } from "@/lib/meta-capi";
+import { readStoredRef, serializeRef, shouldStoreRef, REF_TTL_MS } from "@/lib/ref-storage";
 import { buildWhatsappUrl, conversionRate, resolveWhatsapp } from "@/lib/landing";
 
 const base = { title: "Teste Grátis", slug: "teste-gratis", headline: "Todos os canais sem travar", cta_text: "Quero meu teste" };
@@ -61,5 +62,21 @@ describe("helpers da LP", () => {
     expect(conversionRate(5, 40)).toBe(12.5);
     expect(conversionRate(1, 3)).toBe(33.3);
     expect(conversionRate(0, 0)).toBeNull();
+  });
+});
+
+describe("gravação da referência da LP no localStorage", () => {
+  it("clique novo sempre vence; regravação só renova a mesma ref ou ocupa vaga vazia", () => {
+    expect(shouldStoreRef("OLD111", "NEW222", true)).toBe(true);
+    expect(shouldStoreRef(null, "ABC234", false)).toBe(true);
+    expect(shouldStoreRef("ABC234", "abc234", false)).toBe(true);
+    expect(shouldStoreRef("NEW222", "ABC234", false)).toBe(false);
+    expect(shouldStoreRef(null, "  ", true)).toBe(false);
+  });
+  it("o valor gravado é lido pelo /pagar dentro da validade de 30 dias", () => {
+    const now = 1_800_000_000_000;
+    const raw = serializeRef("ABC234", now);
+    expect(readStoredRef(raw, now + 1000)).toBe("ABC234");
+    expect(readStoredRef(raw, now + REF_TTL_MS)).toBeNull();
   });
 });

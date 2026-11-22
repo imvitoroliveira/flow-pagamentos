@@ -49,4 +49,12 @@ describe("evento Purchase", () => {
     expect(shouldReportToMeta({ fbc: null, fbp: null })).toBe(false);
     expect(shouldReportToMeta(null)).toBe(false);
   });
+  it("Advanced Matching: campanha + telefone BR válido ou e-mail reporta mesmo sem fbc/fbp", () => {
+    const none = { fbc: null, fbp: null };
+    expect(shouldReportToMeta(none, { campaign_id: "c1", customer_phone: "(11) 98765-4321", customer_email: null })).toBe(true);
+    expect(shouldReportToMeta(null, { campaign_id: "c1", customer_phone: "", customer_email: "a@b.com" })).toBe(true);
+    expect(shouldReportToMeta(none, { campaign_id: null, customer_phone: "11987654321", customer_email: "a@b.com" })).toBe(false);
+    expect(shouldReportToMeta(none, { campaign_id: "c1", customer_phone: "123", customer_email: " " })).toBe(false);
+    expect(shouldReportToMeta({ fbc: "fb.1.1.a" }, { campaign_id: null })).toBe(true);
+  });
 });

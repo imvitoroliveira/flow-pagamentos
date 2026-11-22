@@ -64,8 +64,19 @@ export function buildPurchaseEvent(i: PurchaseInput) {
   };
 }
 
-/** Only visits that came from a Meta-tracked click (fbc/fbp) are reported, so organic renewals don't teach Meta the wrong audience. */
-export const shouldReportToMeta = (click: { fbc?: string | null; fbp?: string | null } | null | undefined) => !!(click?.fbc || click?.fbp);
+/**
+ * Reports a sale when the visit carries Meta cookies (fbc/fbp), OR when the order came from a campaign and has customer data for
+ * Advanced Matching (valid BR phone or e-mail) — browsers that block cookies (iPhone, Brave) would otherwise lose real sales.
+ * Orders without a campaign and without cookies (organic renewals) are never reported, so Meta doesn't learn the wrong audience.
+ */
+export function shouldReportToMeta(
+  click: { fbc?: string | null; fbp?: string | null } | null | undefined,
+  order?: { campaign_id?: string | null; customer_phone?: string | null; customer_email?: string | null } | null,
+): boolean {
+  if (click?.fbc || click?.fbp) return true;
+  if (!order?.campaign_id) return false;
+  return hashPhoneBR(order.customer_phone) !== null || !!order.customer_email?.trim();
+}
 
 export type LeadInput = {
   eventId: string;

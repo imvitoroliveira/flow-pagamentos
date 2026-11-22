@@ -318,13 +318,13 @@ export async function sendConversionEvents(orderId: string) {
     if (!token) return;
     const sb = await db();
     const { data: o } = await sb.from("orders")
-      .select("id, event_id, ref_code, amount_cents, paid_at, customer_email, customer_phone, panel_username, campaigns(meta_pixel_id)")
+      .select("id, event_id, ref_code, campaign_id, amount_cents, paid_at, customer_email, customer_phone, panel_username, campaigns(meta_pixel_id)")
       .eq("id", orderId).maybeSingle();
     // the campaign's own Pixel ID wins; otherwise the default one saved in Configurações → Integrações
     const pixelId = o?.campaigns?.meta_pixel_id || (await getSetting("META_PIXEL_ID")).value;
     if (!o || !o.paid_at || !pixelId || !o.ref_code) return;
     const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
-    if (!shouldReportToMeta(click)) return;
+    if (!shouldReportToMeta(click, o)) return;
 
     const { publicUrl } = await import("./site-url");
     const body: Record<string, unknown> = {
