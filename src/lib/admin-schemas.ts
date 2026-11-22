@@ -60,3 +60,24 @@ export const manualScheduleSchema = z.object({
   notes: z.string().trim().max(300).optional().default(""),
 });
 export type ManualScheduleForm = z.input<typeof manualScheduleSchema>;
+
+const benefitSchema = z.object({ icon: z.enum(["tv", "zap", "headset", "shield", "wrench", "smartphone", "check", "star"]), text: z.string().trim().min(2, "Texto muito curto").max(90) });
+const faqSchema = z.object({ question: z.string().trim().min(2).max(120), answer: z.string().trim().min(2).max(500) });
+
+export const landingPageSchema = z.object({
+  campaign_id: z.string().uuid().nullable().optional().default(null),
+  title: z.string().trim().min(2, "Informe o título interno").max(80),
+  slug: z.string().trim().min(2, "Informe o slug").max(60).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, "Use a-z, 0-9 e hífen"),
+  headline: z.string().trim().min(5, "Informe a headline").max(140),
+  subheadline: z.string().trim().max(300).optional().default(""),
+  cta_text: z.string().trim().min(2, "Informe o texto do botão").max(60),
+  cta_subtext: z.string().trim().max(80).optional().default(""),
+  badge_top: z.string().trim().max(80).optional().default(""),
+  whatsapp_number: z.string().trim().max(20).refine((v) => !v || normalizeBrPhone(v) !== null, "WhatsApp inválido (DDD + número)").optional().default(""),
+  whatsapp_message: z.string().trim().max(300).optional().default(""),
+  meta_pixel_id: z.string().trim().refine((v) => !v || /^\d{10,20}$/.test(v), "Meta Pixel ID deve ter 10 a 20 dígitos").optional().default(""),
+  benefits: z.array(benefitSchema).max(8, "No máximo 8 benefícios").default([]),
+  faq: z.array(faqSchema).max(8, "No máximo 8 perguntas").default([]),
+  active: z.boolean().default(true),
+});
+export type LandingPageInput = z.input<typeof landingPageSchema>;

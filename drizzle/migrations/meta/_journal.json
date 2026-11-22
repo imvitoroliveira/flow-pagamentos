@@ -71,6 +71,13 @@
       "when": 1794323400002,
       "tag": "0009_ensure_integration_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1795600000000,
+      "tag": "0010_landing_pages",
+      "breakpoints": true
     }
   ]
 }

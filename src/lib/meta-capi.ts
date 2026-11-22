@@ -1,4 +1,4 @@
-// Pure helpers for Meta Conversions API "Purchase" events (server-side). No I/O here.
+// Meta Conversions API helpers (server-side): "Purchase" and "Lead" events. Builders are pure; only sendMetaLead does I/O.
 import { createHash } from "crypto";
 
 export const META_API_VERSION = "v26.0";
@@ -39,7 +39,7 @@ export type PurchaseInput = {
   userAgent?: string | null;
 };
 
-type UserData = { em?: string[]; ph?: string[]; external_id?: string[]; fbc?: string; fbp?: string; client_user_agent?: string };
+type UserData = { em?: string[]; ph?: string[]; external_id?: string[]; fbc?: string; fbp?: string; client_user_agent?: string; client_ip_address?: string };
 
 export function buildPurchaseEvent(i: PurchaseInput) {
   const em = hashEmail(i.email);
@@ -66,3 +66,51 @@ export function buildPurchaseEvent(i: PurchaseInput) {
 
 /** Only visits that came from a Meta-tracked click (fbc/fbp) are reported, so organic renewals don't teach Meta the wrong audience. */
 export const shouldReportToMeta = (click: { fbc?: string | null; fbp?: string | null } | null | undefined) => !!(click?.fbc || click?.fbp);
+
+export type LeadInput = {
+  eventId: string;
+  sourceUrl: string;
+  fbc?: string | null | undefined;
+  fbp?: string | null | undefined;
+  userAgent?: string | null | undefined;
+  ip?: string | null | undefined;
+  refCode?: string | null | undefined;
+  eventTime?: number | undefined; // unix seconds; defaults to now
+};
+
+/** "Lead" fired when the visitor taps the WhatsApp button. Same event_id as the browser Pixel so Meta de-duplicates. */
+export function buildLeadEvent(i: LeadInput) {
+  const ext = hashExternalId(i.refCode);
+  const user_data: UserData = {
+    ...(ext ? { external_id: [ext] } : {}),
+    ...(i.fbc ? { fbc: i.fbc } : {}),
+    ...(i.fbp ? { fbp: i.fbp } : {}),
+    ...(i.userAgent ? { client_user_agent: i.userAgent } : {}),
+    ...(i.ip ? { client_ip_address: i.ip } : {}),
+  };
+  return {
+    event_name: "Lead",
+    event_time: i.eventTime ?? Math.floor(Date.now() / 1000),
+    event_id: i.eventId,
+    event_source_url: i.sourceUrl,
+    action_source: "website",
+    user_data,
+    custom_data: { ...(i.refCode ? { ref_code: i.refCode } : {}), content_name: "whatsapp_click" },
+  };
+}
+
+/** Sends one Lead to the Conversions API. Never throws; returns whether Meta accepted it. */
+export async function sendMetaLead(pixelId: string, token: string, input: LeadInput, testCode?: string | null): Promise<boolean> {
+  const body: Record<string, unknown> = { data: [buildLeadEvent(input)] };
+  if (testCode) body["test_event_code"] = testCode;
+  try {
+    const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) console.error("[meta-capi] lead rejected", res.status, (await res.text().catch(() => "")).slice(0, 300));
+    return res.ok;
+  } catch (e) {
+    console.error("[meta-capi] lead request failed", (e as Error).message);
+    return false;
+  }
+}

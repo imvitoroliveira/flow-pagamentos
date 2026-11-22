@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { campaignSchema, manualScheduleSchema, sellerSchema } from "./admin-schemas";
+import { campaignSchema, landingPageSchema, manualScheduleSchema, sellerSchema } from "./admin-schemas";
 import { nextRunFor } from "./drip-schedule";
 import { isSecretKey, SETTING_KEYS, validateSetting } from "./integration-settings";
 
@@ -378,4 +378,73 @@ export const createManualSchedule = createServerFn({ method: "POST" })
       await logAdminAction(ctx, { action: "manual_schedule_created", entity: "credit_schedule", entity_id: r.schedule_id, details: { username: data.panel_username, total_months: data.total_months, amount_reais: data.amount_reais, activated_now: r.activated, notes: data.notes || null } });
       return { ok: true as const, schedule_id: r.schedule_id, next_run_at: r.next_run_at };
     } catch (e) { return fail((e as Error).message); }
+  });
+
+// ─── landing pages ────────────────────────────────────────────────────────
+const lpRow = (d: z.output<typeof landingPageSchema>) => ({
+  campaign_id: d.campaign_id, title: d.title, slug: d.slug, headline: d.headline,
+  subheadline: d.subheadline || null, cta_text: d.cta_text, cta_subtext: d.cta_subtext || null, badge_top: d.badge_top || null,
+  whatsapp_number: d.whatsapp_number || null, whatsapp_message: d.whatsapp_message || null, meta_pixel_id: d.meta_pixel_id || null,
+  benefits: d.benefits, faq: d.faq, active: d.active, updated_at: new Date().toISOString(),
+});
+
+export const saveLandingPage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => landingPageSchema.extend({ id: z.string().uuid().optional() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { id, ...rest } = data;
+    const row = lpRow(rest);
+    if (id) {
+      const { error } = await ctx.supabase.from("landing_pages").update(row).eq("id", id);
+      if (error) return fail(error.code === "23505" ? "Este slug já está em uso." : "Não foi possível salvar a LP.");
+      await logAdminAction(ctx, { action: "landing_page.update", entity: "landing_page", entity_id: id, details: { slug: data.slug } });
+      return { ok: true as const, id };
+    }
+    const { data: c, error } = await ctx.supabase.from("landing_pages").insert(row).select("id").single();
+    if (error || !c) return fail(error?.code === "23505" ? "Este slug já está em uso." : "Não foi possível criar a LP.");
+    await logAdminAction(ctx, { action: "landing_page.create", entity: "landing_page", entity_id: c.id, details: { slug: data.slug } });
+    return { ok: true as const, id: c.id as string };
+  });
+
+export const setLandingPageActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid(), active: z.boolean() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { error } = await ctx.supabase.from("landing_pages").update({ active: data.active, updated_at: new Date().toISOString() }).eq("id", data.id);
+    if (error) return fail("Não foi possível alterar a LP.");
+    await logAdminAction(ctx, { action: data.active ? "landing_page.activate" : "landing_page.deactivate", entity: "landing_page", entity_id: data.id });
+    return { ok: true as const };
+  });
+
+export const duplicateLandingPage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { data: src } = await ctx.supabase.from("landing_pages").select("*").eq("id", data.id).maybeSingle();
+    if (!src) return fail("LP não encontrada.");
+    const { id: _id, created_at: _c, updated_at: _u, views_count: _v, leads_count: _l, ...copy } = src as Record<string, unknown> & { slug: string; title: string };
+    for (let n = 1; n <= 6; n++) {
+      const slug = `${copy.slug}-copia${n > 1 ? `-${n}` : ""}`.slice(0, 60);
+      const { data: c, error } = await ctx.supabase.from("landing_pages").insert({ ...copy, slug, title: `${copy.title} (cópia)`, active: false }).select("id").single();
+      if (!error && c) {
+        await logAdminAction(ctx, { action: "landing_page.duplicate", entity: "landing_page", entity_id: c.id, details: { from: copy.slug, slug } });
+        return { ok: true as const, id: c.id as string, slug };
+      }
+      if (error?.code !== "23505") return fail("Não foi possível duplicar a LP.");
+    }
+    return fail("Não foi possível gerar um slug livre para a cópia.");
+  });
+
+export const deleteLandingPage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { ctx, logAdminAction } = await guard(context);
+    const { error } = await ctx.supabase.from("landing_pages").delete().eq("id", data.id);
+    if (error) return fail("Não foi possível excluir a LP.");
+    await logAdminAction(ctx, { action: "landing_page.delete", entity: "landing_page", entity_id: data.id });
+    return { ok: true as const };
   });
