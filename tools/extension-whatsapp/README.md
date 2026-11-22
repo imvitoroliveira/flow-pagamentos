@@ -14,7 +14,7 @@ Em **Cobrança WhatsApp**, marque os clientes, escolha o intervalo e clique em *
 
 ## Observações
 - Só obedece ao painel em `administrativotop.lovable.app` e `localhost` (lista `ALLOWED_HOSTS` no topo de `panel-bridge.js`; segurança, para que outros sites não comandem seu WhatsApp). Se usar domínio próprio, adicione-o em `host_permissions` e `content_scripts.matches` no `manifest.json` e recarregue a extensão.
-- O envio usa a busca do próprio WhatsApp Web, sem recarregar. Só números que não aparecem na busca (ex.: ainda não são contato) abrem pelo link `…/send?phone=`, o que recarrega a aba naquele cliente.
+- O envio usa as funções internas do próprio WhatsApp Web (instantâneo, sem recarregar). Se o WhatsApp mudar, cai no fluxo pela tela.
 - Números sem WhatsApp aparecem como **Sem WhatsApp** e a fila segue.
 - Envio automático em massa pode levar o WhatsApp a limitar ou banir o número. Use intervalos longos e só com quem é seu cliente.
 - Depois de atualizar os arquivos, clique em recarregar a extensão em `chrome://extensions`.
