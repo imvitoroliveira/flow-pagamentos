@@ -92,3 +92,9 @@ export function aggregateMetrics(clicks: ClickIn[], sales: SaleIn[], refUa: Map<
     },
   };
 }
+
+/** Fill opacity of a state on the map: linear in revenue (max = best state), never below 0.2 when there are sales. */
+export function mapOpacity(revenueCents: number, maxRevenueCents: number): number {
+  if (revenueCents <= 0 || maxRevenueCents <= 0) return 0;
+  return Math.min(0.95, Math.max(0.2, (revenueCents / maxRevenueCents) * 0.95));
+}

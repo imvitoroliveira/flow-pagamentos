@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregateMetrics, getUfFromPhone, parseDeviceFromUA } from "@/lib/metrics-helpers";
+import { aggregateMetrics, getUfFromPhone, mapOpacity, parseDeviceFromUA } from "@/lib/metrics-helpers";
 
 const IPHONE = "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1";
 const IPAD = "Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148";
@@ -85,5 +85,17 @@ describe("aggregateMetrics", () => {
     expect(e.topState).toBeNull();
     expect(e.totals.conversion).toBeNull();
     expect(e.devices.every((d) => d.conversion === null)).toBe(true);
+  });
+});
+
+describe("mapOpacity (mapa do Brasil)", () => {
+  it("escala linear pelo maior faturamento, com piso de 0.2", () => {
+    expect(mapOpacity(10_000, 10_000)).toBe(0.95);
+    expect(mapOpacity(5_000, 10_000)).toBeCloseTo(0.475, 5);
+    expect(mapOpacity(100, 10_000)).toBe(0.2);
+  });
+  it("sem venda ou sem máximo: 0 (estado neutro)", () => {
+    expect(mapOpacity(0, 10_000)).toBe(0);
+    expect(mapOpacity(500, 0)).toBe(0);
   });
 });

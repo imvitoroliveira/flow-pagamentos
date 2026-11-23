@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Bar, BarChart, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { CircleHelp, Monitor, Smartphone, type LucideIcon } from "lucide-react";
+import { BarChart3, CircleHelp, Map as MapIcon, Monitor, Smartphone, type LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageTitle } from "@/components/admin/coming-soon";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BrazilMap } from "@/components/admin/brazil-map";
 import { aggregateMetrics, UF_NAME, type ClickIn, type Device, type SaleIn } from "@/lib/metrics-helpers";
 import { useAdminFilters } from "./admin";
 import { brl, Card, COLORS, Empty, ErrorState, num, pct } from "./admin.index";
@@ -91,10 +92,12 @@ function Kpi({ title, value, hint, loading }: { title: string; value: string; hi
 
 function MetricsPage() {
   const q = useMetrics();
+  const [viewMode, setViewMode] = useState<"map" | "bars">("map");
   const d = q.data;
   const loading = q.isLoading;
   const devicesWithTraffic = useMemo(() => (d?.devices ?? []).filter((x) => x.accesses > 0), [d]);
   const topStates = useMemo(() => (d?.states ?? []).filter((s) => s.uf).slice(0, 10).map((s) => ({ uf: s.uf as string, reais: s.revenue_cents / 100, sales: s.sales })), [d]);
+  const mapStates = useMemo(() => (d?.states ?? []).flatMap((s) => (s.uf ? [{ uf: s.uf, sales: s.sales, revenue_cents: s.revenue_cents, share: s.share }] : [])), [d]);
   const totalSales = d?.states.reduce((a, s) => a + s.sales, 0) ?? 0;
 
   return (
@@ -165,7 +168,27 @@ function MetricsPage() {
               <Empty msg="Nenhuma venda paga no período." hint="Amplie o período ou remova filtros." />
             ) : (
               <div className="space-y-4">
-                {topStates.length > 0 && (
+                <div className="flex justify-end gap-1" role="group" aria-label="Tipo de visualização">
+                  {([["map", "Mapa", MapIcon], ["bars", "Barras", BarChart3]] as const).map(([v, label, Icon]) => (
+                    <button key={v} type="button" aria-pressed={viewMode === v} onClick={() => setViewMode(v)}
+                      className={`inline-flex min-h-11 items-center gap-2 rounded-full border px-4 text-sm transition-colors ${viewMode === v ? "border-primary bg-primary/15 text-primary" : "text-muted-foreground hover:text-foreground"}`}>
+                      <Icon className="h-4 w-4" aria-hidden />{label}
+                    </button>
+                  ))}
+                </div>
+                {viewMode === "map" && (
+                  mapStates.length ? (
+                    <div className="space-y-2">
+                      <BrazilMap states={mapStates} />
+                      <div className="mx-auto flex max-w-lg items-center gap-3 text-xs text-muted-foreground">
+                        <span>Menor faturamento</span>
+                        <span className="h-2 flex-1 rounded-full bg-gradient-to-r from-primary/20 to-primary/95" aria-hidden />
+                        <span>Maior faturamento</span>
+                      </div>
+                    </div>
+                  ) : <Empty msg="Nenhuma venda com telefone válido." hint="O mapa usa o DDD do telefone informado na compra." />
+                )}
+                {viewMode === "bars" && topStates.length > 0 && (
                   <div className="h-72" aria-hidden>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={topStates} layout="vertical" margin={{ left: 4, right: 16 }}>
