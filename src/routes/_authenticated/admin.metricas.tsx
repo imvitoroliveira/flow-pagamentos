@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageTitle } from "@/components/admin/coming-soon";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BrazilMap } from "@/components/admin/brazil-map";
+import { ReturnCalendar } from "@/components/admin/return-calendar";
 import { aggregateMetrics, UF_NAME, type ClickIn, type Device, type SaleIn } from "@/lib/metrics-helpers";
 import { useAdminFilters } from "./admin";
 import { brl, Card, COLORS, Empty, ErrorState, num, pct } from "./admin.index";
@@ -92,6 +93,7 @@ function Kpi({ title, value, hint, loading }: { title: string; value: string; hi
 
 function MetricsPage() {
   const q = useMetrics();
+  const filters = useAdminFilters();
   const [viewMode, setViewMode] = useState<"map" | "bars">("map");
   const d = q.data;
   const loading = q.isLoading;
@@ -119,6 +121,9 @@ function MetricsPage() {
             <Kpi loading={loading} title="Faturamento rastreado" value={d ? brl(d.totals.trackedRevenue_cents) : "—"}
               hint="Vendas pagas/renovadas com código de campanha" />
           </div>
+
+          {/* Calendário de performance financeira */}
+          <ReturnCalendar campaign={filters.campaign} seller={filters.seller} />
 
           {/* Seção 2 — Aparelhos */}
           <Card title="Distribuição por tipo de aparelho">
