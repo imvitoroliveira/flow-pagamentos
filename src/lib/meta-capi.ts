@@ -1,4 +1,4 @@
-// Meta Conversions API helpers (server-side): "Purchase" and "Lead" events. Builders are pure; only sendMetaLead does I/O.
+// Meta Conversions API helpers (server-side): "Purchase", "InitiateCheckout" and "Lead" events. Builders are pure; only sendMetaLead does I/O.
 import { createHash } from "crypto";
 
 export const META_API_VERSION = "v26.0";
@@ -125,3 +125,19 @@ export async function sendMetaLead(pixelId: string, token: string, input: LeadIn
     return false;
   }
 }
+
+export type InitiateCheckoutInput = Omit<PurchaseInput, "paidAt"> & { planSlug: string; eventTime?: number };
+
+/** "InitiateCheckout" fired when the PIX is generated. Browser Pixel uses the same event_id so Meta de-duplicates. */
+export function buildInitiateCheckoutEvent(i: InitiateCheckoutInput) {
+  const base = buildPurchaseEvent({ ...i, paidAt: new Date().toISOString() });
+  return {
+    ...base,
+    event_name: "InitiateCheckout",
+    event_time: i.eventTime ?? Math.floor(Date.now() / 1000),
+    custom_data: { currency: "BRL", value: Math.round(i.amountCents) / 100, content_ids: [i.planSlug], content_type: "product", num_items: 1, order_id: i.orderId },
+  };
+}
+
+/** Browser/server shared id for the checkout event of an order. */
+export const checkoutEventId = (orderEventId: string) => `ic_${orderEventId}`;

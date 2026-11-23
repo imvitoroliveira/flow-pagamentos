@@ -12,6 +12,7 @@ import { createOrder, getOrderStatus, getPlans, trackEvent } from "@/lib/checkou
 import { readStoredRef, REF_KEY, serializeRef } from "@/lib/ref-storage";
 import { validateUsername } from "@/lib/renewal.functions";
 import { cn } from "@/lib/utils";
+import { initPixel, trackPixel } from "@/lib/meta-pixel";
 import logoFull from "@/assets/natv-logo-full.png.asset.json";
 
 const plansQuery = queryOptions({ queryKey: ["plans"], queryFn: () => getPlans() });
@@ -130,6 +131,10 @@ function PagarPage() {
           session_id: sessionId(),
         },
       });
+      if (r.meta_pixel_id) {
+        initPixel(r.meta_pixel_id);
+        trackPixel("InitiateCheckout", { currency: "BRL", value: r.amount_cents / 100, content_ids: [slug], content_type: "product", num_items: 1 }, r.checkout_event_id);
+      }
       setPix(r);
       setStep(3);
     } catch (err) {

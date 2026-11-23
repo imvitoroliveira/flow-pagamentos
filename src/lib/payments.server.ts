@@ -1,7 +1,7 @@
 // Server-only payment core shared by server routes (/api/public/*) and server functions.
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
-import { buildPurchaseEvent, metaEventsUrl, shouldReportToMeta } from "./meta-capi";
+import { buildInitiateCheckoutEvent, buildPurchaseEvent, checkoutEventId, metaEventsUrl, shouldReportToMeta } from "./meta-capi";
 import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "./reconcile-policy";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
@@ -127,8 +127,14 @@ export async function createPayment(input: CreatePaymentInput) {
     metadata: { plan: plan.slug, amount_cents: plan.price_cents, event_id },
   });
 
+  // InitiateCheckout to Meta (server side). Bounded wait so the PIX is never held up.
+  const checkout = sendCheckoutEvent(order.id).catch(() => null);
+  const pixelId = await Promise.race([checkout, new Promise<null>((r) => setTimeout(() => r(null), 1500))]);
+
   return {
     order_id: order.id,
+    meta_pixel_id: pixelId ?? null,
+    checkout_event_id: checkoutEventId(event_id),
     abacate_id: pix.id,
     brcode: pix.brCode,
     qr: pix.brCodeBase64,
@@ -306,6 +312,44 @@ export async function notifyAdminOfSale(orderId: string) {
     console.error("[notify-admin-of-sale]", orderId, e);
   }
 }
+/**
+ * Reports "InitiateCheckout" (PIX generated) to Meta with the same rules as Purchase. Returns the Pixel ID used
+ * (so the browser can fire the de-duplicated Pixel event), or null when not reported. Never throws.
+ */
+export async function sendCheckoutEvent(orderId: string): Promise<string | null> {
+  try {
+    const { getSetting } = await import("./integration-settings.server");
+    const token = (await getSetting("META_CAPI_TOKEN")).value;
+    const sb = await db();
+    const { data: o } = await sb.from("orders")
+      .select("id, event_id, ref_code, campaign_id, amount_cents, customer_email, customer_phone, panel_username, plans(slug), campaigns(meta_pixel_id)")
+      .eq("id", orderId).maybeSingle();
+    const pixelId = o?.campaigns?.meta_pixel_id || (await getSetting("META_PIXEL_ID")).value;
+    if (!o || !pixelId || !o.ref_code) return null;
+    const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
+    if (!shouldReportToMeta(click, o)) return null;
+    if (!token) return pixelId;
+    const { publicUrl } = await import("./site-url");
+    const body: Record<string, unknown> = {
+      data: [buildInitiateCheckoutEvent({
+        eventId: checkoutEventId(o.event_id ?? o.id), orderId: o.id, amountCents: o.amount_cents, planSlug: o.plans?.slug ?? "plano",
+        sourceUrl: publicUrl("/pagar"), email: o.customer_email, phone: o.customer_phone, panelUsername: o.panel_username,
+        fbc: click?.fbc ?? null, fbp: click?.fbp ?? null, userAgent: click?.user_agent ?? null,
+      })],
+    };
+    const testCode = (await getSetting("META_TEST_EVENT_CODE")).value;
+    if (testCode) body["test_event_code"] = testCode;
+    const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) console.error("[meta-capi] checkout rejected", res.status, (await res.text().catch(() => "")).slice(0, 300));
+    return pixelId;
+  } catch (e) {
+    console.error("[meta-capi] checkout", orderId, e);
+    return null;
+  }
+}
+
 /**
  * Reports a paid order to Meta (Conversions API, server-side Purchase). Needs META_CAPI_TOKEN and the campaign's
  * Meta Pixel ID; does nothing otherwise. Only orders that came from a Meta-tracked click (fbc/fbp) are sent.

@@ -58,3 +58,15 @@ describe("evento Purchase", () => {
     expect(shouldReportToMeta({ fbc: "fb.1.1.a" }, { campaign_id: null })).toBe(true);
   });
 });
+
+import { buildInitiateCheckoutEvent as buildIC, checkoutEventId as icId } from "@/lib/meta-capi";
+describe("InitiateCheckout", () => {
+  it("sends plan value in BRL with hashed phone and shared event id", () => {
+    const e = buildIC({ eventId: icId("abc"), orderId: "o1", amountCents: 9000, planSlug: "trimestral", sourceUrl: "https://x/pagar", phone: "34984242845" });
+    expect(e.event_name).toBe("InitiateCheckout");
+    expect(e.event_id).toBe("ic_abc");
+    expect(e.custom_data.value).toBe(90);
+    expect(e.custom_data.content_ids).toEqual(["trimestral"]);
+    expect(e.user_data.ph?.[0]).toHaveLength(64);
+  });
+});
