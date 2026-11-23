@@ -27,6 +27,7 @@ import { Route as AuthenticatedAdminFunilRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminFuturosRouteImport } from './routes/_authenticated/admin.futuros'
 import { Route as AuthenticatedAdminLogsRouteImport } from './routes/_authenticated/admin.logs'
 import { Route as AuthenticatedAdminLpsRouteImport } from './routes/_authenticated/admin.lps'
+import { Route as AuthenticatedAdminMetricasRouteImport } from './routes/_authenticated/admin.metricas'
 import { Route as AuthenticatedAdminPedidosRouteImport } from './routes/_authenticated/admin.pedidos'
 import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_authenticated/admin.vendedores'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
@@ -132,6 +133,12 @@ const AuthenticatedAdminLpsRoute = AuthenticatedAdminLpsRouteImport.update({
   path: '/lps',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminMetricasRoute =
+  AuthenticatedAdminMetricasRouteImport.update({
+    id: '/metricas',
+    path: '/metricas',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminPedidosRoute =
   AuthenticatedAdminPedidosRouteImport.update({
     id: '/pedidos',
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/lps': typeof AuthenticatedAdminLpsRoute
+  '/admin/metricas': typeof AuthenticatedAdminMetricasRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -233,6 +241,7 @@ export interface FileRoutesByTo {
   '/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/admin/lps': typeof AuthenticatedAdminLpsRoute
+  '/admin/metricas': typeof AuthenticatedAdminMetricasRoute
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -264,6 +273,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/futuros': typeof AuthenticatedAdminFuturosRoute
   '/_authenticated/admin/logs': typeof AuthenticatedAdminLogsRoute
   '/_authenticated/admin/lps': typeof AuthenticatedAdminLpsRoute
+  '/_authenticated/admin/metricas': typeof AuthenticatedAdminMetricasRoute
   '/_authenticated/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/_authenticated/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/admin/futuros'
     | '/admin/logs'
     | '/admin/lps'
+    | '/admin/metricas'
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/admin/futuros'
     | '/admin/logs'
     | '/admin/lps'
+    | '/admin/metricas'
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
@@ -353,6 +365,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/futuros'
     | '/_authenticated/admin/logs'
     | '/_authenticated/admin/lps'
+    | '/_authenticated/admin/metricas'
     | '/_authenticated/admin/pedidos'
     | '/_authenticated/admin/vendedores'
     | '/api/public/abacatepay-webhook'
@@ -512,6 +525,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminLpsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/metricas': {
+      id: '/_authenticated/admin/metricas'
+      path: '/metricas'
+      fullPath: '/admin/metricas'
+      preLoaderRoute: typeof AuthenticatedAdminMetricasRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/pedidos': {
       id: '/_authenticated/admin/pedidos'
       path: '/pedidos'
@@ -594,6 +614,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminFuturosRoute: typeof AuthenticatedAdminFuturosRoute
   AuthenticatedAdminLogsRoute: typeof AuthenticatedAdminLogsRoute
   AuthenticatedAdminLpsRoute: typeof AuthenticatedAdminLpsRoute
+  AuthenticatedAdminMetricasRoute: typeof AuthenticatedAdminMetricasRoute
   AuthenticatedAdminPedidosRoute: typeof AuthenticatedAdminPedidosRoute
   AuthenticatedAdminVendedoresRoute: typeof AuthenticatedAdminVendedoresRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
@@ -608,6 +629,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminFuturosRoute: AuthenticatedAdminFuturosRoute,
   AuthenticatedAdminLogsRoute: AuthenticatedAdminLogsRoute,
   AuthenticatedAdminLpsRoute: AuthenticatedAdminLpsRoute,
+  AuthenticatedAdminMetricasRoute: AuthenticatedAdminMetricasRoute,
   AuthenticatedAdminPedidosRoute: AuthenticatedAdminPedidosRoute,
   AuthenticatedAdminVendedoresRoute: AuthenticatedAdminVendedoresRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,

@@ -1,0 +1,1 @@
+CREATE INDEX IF NOT EXISTS daily_ad_spend_campaign_idx ON public.daily_ad_spend (campaign_id);

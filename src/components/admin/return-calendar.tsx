@@ -101,7 +101,7 @@ export function ReturnCalendar({ campaign, seller }: { campaign: string | null; 
   return (
     <Card>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-base font-semibold">Calendário de Performance Financeira (Lucro Real)</h2>
+        <h2 className="font-display text-base font-semibold">Lucro real por dia</h2>
         <div className="flex items-center gap-1">
           <Button variant="outline" size="icon" className="size-11" aria-label="Mês anterior" onClick={() => go(-1)}><ChevronLeft aria-hidden /></Button>
           <Select value={monthKey(ym.year, ym.month0)} onValueChange={(v) => setYm({ year: Number(v.slice(0, 4)), month0: Number(v.slice(5, 7)) - 1 })}>
@@ -116,33 +116,34 @@ export function ReturnCalendar({ campaign, seller }: { campaign: string | null; 
 
       {q.isError && !d ? <div className="mt-4"><ErrorState onRetry={() => q.refetch()} /></div> : (
         <>
-          <div className="mt-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Total label="Faturamento Bruto" loading={loading} value={brl(totals.revenue_cents)} hint={`${totals.sales} ${totals.sales === 1 ? "venda" : "vendas"}`} />
-            <Total label="Gasto em Anúncios" loading={loading} value={brl(totals.spend_cents)} hint="Soma dos lançamentos do mês" />
-            <Total label="Resultado Líquido (PnL)" loading={loading} value={signedBrl(totals.pnl_cents)} className={`${pnlClass} ${totals.pnl_cents > 0 ? "drop-shadow-[0_0_8px_rgba(52,211,153,0.45)]" : ""}`} hint="Faturamento − gastos" />
-            <Total label="ROI / ROAS do Mês" loading={loading} value={roasText(totals.roas)} hint={totals.roas == null ? "Sem gasto lançado" : "Faturamento ÷ gastos"} />
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            {loading ? <Skeleton className="h-8 w-40" /> : (
+              <p className={`font-display text-2xl font-bold ${pnlClass}`} aria-label="Resultado líquido do mês">{signedBrl(totals.pnl_cents)}</p>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Faturamento <span className="font-medium text-foreground">{brl(totals.revenue_cents)}</span> · {totals.sales} {totals.sales === 1 ? "venda" : "vendas"}
+              {" · "}Ads <span className="font-medium text-foreground">{brl(totals.spend_cents)}</span>
+              {" · "}ROAS <span className="font-medium text-foreground">{roasText(totals.roas)}</span>
+            </p>
           </div>
 
           {d?.truncated && <p className="mt-3 rounded-md border border-amber-500/50 px-3 py-2 text-xs text-amber-500" role="status">Mês com muitas vendas: exibindo as {MAX_ROWS.toLocaleString("pt-BR")} primeiras.</p>}
 
-          <div className="mt-4 grid grid-cols-7 gap-1 sm:gap-1.5" role="grid" aria-label={`Calendário de ${MONTHS_PT[ym.month0]} ${ym.year}`}>
+          <div className="mx-auto mt-3 grid max-w-2xl grid-cols-7 gap-1" role="grid" aria-label={`Calendário de ${MONTHS_PT[ym.month0]} ${ym.year}`}>
             {WEEKDAYS.map((w) => <div key={w} className="pb-1 text-center text-[11px] font-medium text-muted-foreground sm:text-xs" role="columnheader">{w}</div>)}
             {loading
-              ? Array.from({ length: 35 }, (_, i) => <Skeleton key={i} className="h-16 sm:h-20" />)
+              ? Array.from({ length: 35 }, (_, i) => <Skeleton key={i} className="h-12" />)
               : grid.map((c) => {
                 const s = c.inMonth ? days.get(c.key) ?? EMPTY : EMPTY;
                 const tone = dayTone(s.pnl_cents);
-                const cls = `relative flex h-16 min-w-0 flex-col items-stretch justify-between rounded-md border p-1 text-left sm:h-20 sm:p-1.5 ${TONE_CLASS[tone]}`;
-                if (!c.inMonth) return <div key={c.key} className={`${cls} opacity-25`} role="gridcell" aria-hidden><span className="text-[11px] sm:text-xs">{c.day}</span></div>;
+                const cls = `relative flex h-12 min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-md border px-0.5 text-center ${TONE_CLASS[tone]}`;
+                if (!c.inMonth) return <div key={c.key} className={`${cls} opacity-25`} role="gridcell" aria-hidden><span className="text-[11px]">{c.day}</span></div>;
                 return (
                   <button key={c.key} type="button" role="gridcell" onClick={() => setOpen(c.key)}
                     aria-label={`${longDate(c.key)}: resultado ${signedBrl(s.pnl_cents)}, ${s.sales} vendas`}
                     className={`${cls} transition-colors hover:brightness-125 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${c.key === today ? "ring-1 ring-primary" : ""}`}>
-                    <span className="text-[11px] font-medium text-foreground/80 sm:text-xs">{c.day}</span>
-                    <span className="truncate text-center text-[10px] font-semibold leading-tight sm:text-sm">{signedBrl(s.pnl_cents).replace("R$ ", "")}</span>
-                    <span className="truncate text-center text-[9px] leading-tight text-muted-foreground sm:text-[11px]">
-                      {s.sales ? `${s.sales} ${s.sales === 1 ? "venda" : "vendas"}` : " "}{s.spend_cents ? <span className="hidden sm:inline"> · Ads: {brl(s.spend_cents).replace(",00", "")}</span> : null}
-                    </span>
+                    <span className="text-[11px] leading-none text-foreground/80">{c.day}</span>
+                    <span className="max-w-full truncate text-[10px] font-semibold leading-none sm:text-xs">{s.pnl_cents ? signedBrl(s.pnl_cents).replace("R$ ", "").replace(",00", "") : "—"}</span>
                   </button>
                 );
               })}
@@ -153,16 +154,6 @@ export function ReturnCalendar({ campaign, seller }: { campaign: string | null; 
       {open && <DayDialog dayKey={open} sales={(d?.sales ?? []).filter((s) => s.paid_at && spDayKey(s.paid_at) === open)}
         spend={(d?.spend ?? []).filter((s) => s.date === open)} campaign={campaign} seller={seller} onClose={() => setOpen(null)} />}
     </Card>
-  );
-}
-
-function Total({ label, value, hint, loading, className = "" }: { label: string; value: string; hint: string; loading: boolean; className?: string }) {
-  return (
-    <div className="rounded-xl border bg-muted/10 p-3">
-      <p className="text-xs text-muted-foreground">{label}</p>
-      {loading ? <Skeleton className="mt-1 h-8" /> : <p className={`font-display text-xl font-bold sm:text-2xl ${className}`}>{value}</p>}
-      <p className="text-[11px] text-muted-foreground">{hint}</p>
-    </div>
   );
 }
 

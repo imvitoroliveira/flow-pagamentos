@@ -92,6 +92,13 @@
       "when": 1795600000002,
       "tag": "0012_daily_ad_spend",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795600000003,
+      "tag": "0013_ensure_daily_ad_spend",
+      "breakpoints": true
     }
   ]
 }

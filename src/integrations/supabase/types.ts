@@ -260,6 +260,44 @@ export type Database = {
           },
         ]
       }
+      daily_ad_spend: {
+        Row: {
+          campaign_id: string | null
+          created_at: string
+          date: string
+          id: string
+          notes: string | null
+          spend_cents: number
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          notes?: string | null
+          spend_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          notes?: string | null
+          spend_cents?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_ad_spend_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           created_at: string
