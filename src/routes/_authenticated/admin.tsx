@@ -1,17 +1,18 @@
-import { createFileRoute, Link, Outlet, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, redirect, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 import {
-  BarChart3, CalendarDays, Filter, CalendarClock, Funnel, LayoutDashboard, LogOut, Megaphone, MessageSquareShare, PanelTop, Receipt, ScrollText, Settings, TrendingUp, UserRound, Users,
+  BarChart3, CalendarDays, ChevronRight, Filter, CalendarClock, Funnel, LayoutDashboard, LogOut, Megaphone, MessageSquareShare, PanelTop, Receipt, ScrollText, Settings, ShoppingBag, TrendingUp, UserRound, Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkAdmin } from "@/lib/admin.functions";
 import { adminSearchSchema, PERIOD_LABEL, PERIODS, resolveRange, type AdminSearch, type Period } from "@/lib/admin-filters";
 import {
   Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarHeader, SidebarInset,
-  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarProvider, SidebarTrigger,
+  SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -49,25 +50,47 @@ export function useAdminFilters() {
   return { ...resolveRange(search), search };
 }
 
-const NAV = [
-  { to: "/admin", label: "Visão geral", icon: LayoutDashboard, exact: true },
-  { to: "/admin/pedidos", label: "Pedidos", icon: Receipt },
-  { to: "/admin/clientes", label: "Clientes", icon: UserRound },
-  { to: "/admin/futuros", label: "Futuros", icon: CalendarClock },
-  { to: "/admin/cobranca", label: "Cobrança WhatsApp", icon: MessageSquareShare },
-  { to: "/admin/campanhas", label: "Campanhas", icon: Megaphone },
-  { to: "/admin/lps", label: "Landing Pages", icon: PanelTop },
-  { to: "/admin/vendedores", label: "Vendedores", icon: Users },
-  { to: "/admin/funil", label: "Funil e sessões", icon: Funnel },
-  { to: "/admin/metricas", label: "Métricas e inteligência", icon: TrendingUp },
-  { to: "/admin/logs", label: "Logs", icon: ScrollText },
-  { to: "/admin/configuracoes", label: "Configurações", icon: Settings },
+const NAV_TOP = { to: "/admin", label: "Visão geral", icon: LayoutDashboard } as const;
+
+const NAV_GROUPS = [
+  {
+    label: "Vendas & Tráfego", icon: ShoppingBag,
+    items: [
+      { to: "/admin/pedidos", label: "Pedidos", icon: Receipt },
+      { to: "/admin/lps", label: "Landing Pages", icon: PanelTop },
+      { to: "/admin/campanhas", label: "Campanhas", icon: Megaphone },
+      { to: "/admin/vendedores", label: "Vendedores", icon: Users },
+    ],
+  },
+  {
+    label: "Clientes & Cobrança", icon: UserRound,
+    items: [
+      { to: "/admin/clientes", label: "Clientes", icon: UserRound },
+      { to: "/admin/cobranca", label: "Cobrança WhatsApp", icon: MessageSquareShare },
+      { to: "/admin/futuros", label: "Vencimentos Futuros", icon: CalendarClock },
+    ],
+  },
+  {
+    label: "Inteligência", icon: TrendingUp,
+    items: [
+      { to: "/admin/metricas", label: "Métricas & Aparelhos", icon: TrendingUp },
+      { to: "/admin/funil", label: "Funil e Sessões", icon: Funnel },
+    ],
+  },
+  {
+    label: "Sistema & Configurações", icon: Settings,
+    items: [
+      { to: "/admin/configuracoes", label: "Configurações", icon: Settings },
+      { to: "/admin/logs", label: "Logs de Auditoria", icon: ScrollText },
+    ],
+  },
 ] as const;
 
 function AdminLayout() {
   const { user } = Route.useRouteContext();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const currentPath = useRouterState({ select: (r) => r.location.pathname });
   async function signOut() {
     await qc.cancelQueries();
     qc.clear();
@@ -87,15 +110,44 @@ function AdminLayout() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {NAV.map((n) => (
-                  <SidebarMenuItem key={n.to}>
-                    <SidebarMenuButton asChild tooltip={n.label} className="h-11">
-                      <Link to={n.to} search={(s: Partial<AdminSearch>) => s as never} activeOptions={{ exact: "exact" in n, includeSearch: false }}
-                        activeProps={{ "data-active": true } as never}>
-                        <n.icon aria-hidden /> <span>{n.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild tooltip={NAV_TOP.label} className="h-11">
+                    <Link to={NAV_TOP.to} search={(s: Partial<AdminSearch>) => s as never} activeOptions={{ exact: true, includeSearch: false }}
+                      activeProps={{ "data-active": true } as never}>
+                      <NAV_TOP.icon aria-hidden /> <span>{NAV_TOP.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                {NAV_GROUPS.map((g) => (
+                  <Collapsible
+                    key={g.label}
+                    asChild
+                    defaultOpen={g.items.some((i) => currentPath.startsWith(i.to))}
+                    className="group/collapsible"
+                  >
+                    <SidebarMenuItem>
+                      <CollapsibleTrigger asChild>
+                        <SidebarMenuButton tooltip={g.label} className="h-11">
+                          <g.icon aria-hidden />
+                          <span>{g.label}</span>
+                          <ChevronRight aria-hidden className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        </SidebarMenuButton>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <SidebarMenuSub>
+                          {g.items.map((n) => (
+                            <SidebarMenuSubItem key={n.to}>
+                              <SidebarMenuSubButton asChild className="h-9 py-1.5 text-xs" isActive={currentPath.startsWith(n.to)}>
+                                <Link to={n.to} search={(s: Partial<AdminSearch>) => s as never} activeOptions={{ includeSearch: false }}>
+                                  <n.icon aria-hidden /> <span>{n.label}</span>
+                                </Link>
+                              </SidebarMenuSubButton>
+                            </SidebarMenuSubItem>
+                          ))}
+                        </SidebarMenuSub>
+                      </CollapsibleContent>
+                    </SidebarMenuItem>
+                  </Collapsible>
                 ))}
               </SidebarMenu>
             </SidebarGroupContent>
