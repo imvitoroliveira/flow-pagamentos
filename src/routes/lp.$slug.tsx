@@ -79,9 +79,9 @@ function LandingPage() {
     <div className="space-y-2 text-center">
       <button
         id={id} type="button" onClick={onCta} disabled={!lp.whatsapp || busy}
-        className="relative inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-xl bg-emerald-500 px-5 py-3 text-base font-bold text-emerald-950 shadow-lg transition hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+        className="relative inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl bg-primary px-5 py-3 text-base font-bold text-primary-foreground shadow-lg shadow-primary/30 transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
       >
-        <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 animate-ping rounded-xl bg-emerald-500/30 motion-reduce:hidden" />
+        <span aria-hidden className="pointer-events-none absolute inset-0 -z-10 animate-ping rounded-2xl bg-primary/30 motion-reduce:hidden" />
         <MessageCircle className="h-6 w-6 shrink-0" />
         <span>{lp.ctaText}</span>
       </button>
@@ -90,39 +90,88 @@ function LandingPage() {
     </div>
   );
 
+  const steps = [
+    { n: "1", t: "Toque no botão", d: "Abre o WhatsApp com a mensagem pronta." },
+    { n: "2", t: "Receba o acesso", d: "Login liberado em poucos minutos." },
+    { n: "3", t: "Assista na hora", d: "Na TV, TV Box ou celular." },
+  ];
+  const showcase = [
+    { e: "⚽", t: "Futebol ao vivo", d: "Campeonatos e jogos" },
+    { e: "🎬", t: "Filmes", d: "Lançamentos em HD" },
+    { e: "📺", t: "Canais", d: "Abertos e fechados" },
+    { e: "🧸", t: "Infantil", d: "Desenhos 24h" },
+  ];
+
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex max-w-md flex-col gap-8 px-4 pb-12 pt-6">
-        <header className="space-y-4 text-center">
-          <p className="text-sm font-extrabold tracking-widest text-primary">NATV</p>
-          {lp.badgeTop && <span className="inline-block rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary">{lp.badgeTop}</span>}
-          <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">{lp.headline}</h1>
-          {lp.subheadline && <p className="text-base text-muted-foreground">{lp.subheadline}</p>}
+    <main className="relative min-h-screen overflow-hidden bg-background pb-28 text-foreground">
+      <div aria-hidden className="pointer-events-none absolute -top-40 left-1/2 h-96 w-[36rem] -translate-x-1/2 rounded-full bg-primary/25 blur-3xl" />
+      <div className="relative mx-auto flex max-w-md flex-col gap-10 px-5 pt-5">
+        <nav className="flex items-center justify-between">
+          <span className="font-display text-lg font-extrabold tracking-widest text-primary">NATV</span>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
+            <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75 motion-reduce:hidden" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
+            Servidor online
+          </span>
+        </nav>
+
+        <header className="space-y-5 text-center">
+          {lp.badgeTop && <span className="inline-block rounded-full border border-primary/40 bg-primary/10 px-4 py-1.5 text-xs font-bold uppercase tracking-wide text-primary">{lp.badgeTop}</span>}
+          <h1 className="font-display text-[2.1rem] font-extrabold leading-[1.1] tracking-tight sm:text-5xl">{lp.headline}</h1>
+          {lp.subheadline && <p className="text-base leading-relaxed text-muted-foreground">{lp.subheadline}</p>}
+          <div className="flex items-center justify-center gap-1 text-primary" aria-label="Avaliação 5 estrelas">
+            {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="h-4 w-4 fill-current" />)}
+            <span className="ml-2 text-xs text-muted-foreground">Clientes satisfeitos em todo o Brasil</span>
+          </div>
         </header>
 
         {renderCta("lp-cta-top")}
 
-        <section aria-label="Benefícios" className="grid grid-cols-1 gap-3">
+        <section aria-label="O que você assiste" className="space-y-4">
+          <h2 className="text-center font-display text-xl font-bold">Tudo em um só lugar</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {showcase.map((s) => (
+              <div key={s.t} className="rounded-2xl border border-border bg-gradient-to-br from-card to-primary/10 p-4">
+                <span aria-hidden className="text-3xl">{s.e}</span>
+                <p className="mt-3 font-display text-sm font-bold">{s.t}</p>
+                <p className="text-xs text-muted-foreground">{s.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section aria-label="Benefícios" className="space-y-2 rounded-2xl border border-border bg-card/60 p-2 backdrop-blur">
           {lp.benefits.map((b, i) => {
             const Icon = ICONS[b.icon] ?? Check;
             return (
-              <div key={i} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary"><Icon className="h-5 w-5" /></span>
+              <div key={i} className="flex items-center gap-3 rounded-xl p-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary"><Icon className="h-5 w-5" /></span>
                 <p className="text-sm font-medium">{b.text}</p>
               </div>
             );
           })}
         </section>
 
+        <section aria-label="Como funciona" className="space-y-4">
+          <h2 className="text-center font-display text-xl font-bold">Comece em 3 passos</h2>
+          <ol className="space-y-3">
+            {steps.map((s) => (
+              <li key={s.n} className="flex items-start gap-4">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary font-display font-extrabold text-primary-foreground">{s.n}</span>
+                <div><p className="font-semibold">{s.t}</p><p className="text-sm text-muted-foreground">{s.d}</p></div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         <section aria-label="Dispositivos compatíveis" className="space-y-3 text-center">
-          <h2 className="font-display text-lg font-semibold">Funciona em todos os seus aparelhos</h2>
+          <h2 className="font-display text-xl font-bold">Funciona nos seus aparelhos</h2>
           <div className="flex flex-wrap justify-center gap-2">
             {DEVICES.map((d) => <span key={d} className="rounded-full border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground">{d}</span>)}
           </div>
         </section>
 
         <section aria-label="Dúvidas frequentes" className="space-y-3">
-          <h2 className="text-center font-display text-lg font-semibold">Dúvidas rápidas</h2>
+          <h2 className="text-center font-display text-xl font-bold">Dúvidas rápidas</h2>
           {lp.faq.map((f, i) => (
             <details key={i} className="group rounded-xl border border-border bg-card px-4">
               <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 py-3 text-sm font-medium">
@@ -134,6 +183,14 @@ function LandingPage() {
         </section>
 
         {renderCta("lp-cta-bottom")}
+      </div>
+
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
+        <div className="mx-auto max-w-md">
+          <button type="button" onClick={onCta} disabled={!lp.whatsapp || busy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60">
+            <MessageCircle className="h-5 w-5" /> Teste grátis no WhatsApp
+          </button>
+        </div>
       </div>
     </main>
   );
