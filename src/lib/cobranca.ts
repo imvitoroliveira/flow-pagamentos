@@ -44,6 +44,46 @@ export function interpolate(tpl: string, v: Partial<Record<"nome" | "usuario" | 
   return tpl.replace(/\{(nome|usuario|vencimento|dias|link)\}/g, (m, k: keyof typeof v) => (v[k] === undefined ? m : String(v[k])));
 }
 
+const GENERIC_SUFFIXES = new Set(["iptv", "cliente", "tv", "play", "app", "teste", "oficial", "p2p", "stream", "vip"]);
+
+function capitalize(s: string): string {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1).toLowerCase() : "";
+}
+
+/**
+ * Nome para a mensagem. Usa o nome salvo no pedido; senão deduz do usuário do painel
+ * (mara.iptv → Mara, antonio.barbosa → Antonio Barbosa, Fabioiptv → Fabio).
+ */
+export function cleanCustomerName(rawUsername: string, savedName?: string | null): { firstName: string; fullName: string } {
+  if (savedName?.trim()) {
+    const clean = savedName.trim();
+    return { firstName: clean.split(/\s+/)[0] ?? clean, fullName: clean };
+  }
+  const u = (rawUsername || "").trim().replace(/^[._-]+|[._-]+$/g, "");
+
+  if (/[._-]/.test(u)) {
+    const parts = u.split(/[._-]+/).filter(Boolean);
+    const first = capitalize(parts[0] ?? "");
+    const second = parts[1];
+    if (second === undefined) return { firstName: first, fullName: first };
+    // segunda parte genérica ou só números (iptv, cliente, 123…) é descartada
+    if (GENERIC_SUFFIXES.has(second.toLowerCase()) || /^\d+$/.test(second)) return { firstName: first, fullName: first };
+    return { firstName: first, fullName: `${first} ${capitalize(second)}` };
+  }
+
+  // sufixo genérico colado no final (Fabioiptv → Fabio)
+  for (const suf of GENERIC_SUFFIXES) {
+    const m = u.match(new RegExp(`^(.+?)(${suf})$`, "i"));
+    if (m && (m[1]?.length ?? 0) >= 3) {
+      const first = capitalize(m[1] ?? "");
+      return { firstName: first, fullName: first };
+    }
+  }
+
+  const cap = capitalize(u);
+  return { firstName: cap, fullName: cap };
+}
+
 export type CobrancaClient = { username: string; phone: string | null; expires_at: string | null; blocked: boolean };
 export type QueueItem = {
   username: string; name: string; phone: string | null; expires_at: string; days: number; regua: Regua; text: string;
@@ -72,8 +112,10 @@ export function buildQueue(opts: {
     const days = daysUntil(c.expires_at, now);
     const regua = classifyRegua(days);
     if (!regua) continue;
-    const name = opts.names?.get(c.username.toLowerCase())?.trim() || c.username;
-    const text = interpolate(tpls[regua], { nome: name.split(/\s+/)[0] ?? name, usuario: c.username, vencimento: fmtVencimento(c.expires_at), dias: days, link: opts.link });
+    const { firstName, fullName: name } = cleanCustomerName(c.username, opts.names?.get(c.username.toLowerCase()));
+    // link exclusivo: o /pagar já abre com o usuário preenchido
+    const clientLink = `${opts.link}${opts.link.includes("?") ? "&" : "?"}u=${encodeURIComponent(c.username)}`;
+    const text = interpolate(tpls[regua], { nome: firstName, usuario: c.username, vencimento: fmtVencimento(c.expires_at), dias: days, link: clientLink });
     out.push({ username: c.username, name, phone: normalizePhoneBR(c.phone), expires_at: c.expires_at, days, regua, text });
   }
   return out.sort((a, b) => b.days - a.days || a.username.localeCompare(b.username));

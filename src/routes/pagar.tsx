@@ -23,6 +23,8 @@ export const Route = createFileRoute("/pagar")({
   validateSearch: z.object({
     ref: z.string().max(16).optional().catch(undefined),
     plano: z.enum(["mensal", "trimestral", "semestral"]).optional().catch(undefined),
+    user: z.string().max(64).optional().catch(undefined),
+    u: z.string().max(64).optional().catch(undefined),
   }),
   loader: ({ context }) => context.queryClient.ensureQueryData(plansQuery),
   head: () => ({
@@ -70,7 +72,7 @@ function PagarPage() {
   const search = Route.useSearch();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [slug, setSlug] = useState<Slug>(search.plano ?? "semestral");
-  const [form, setForm] = useState<FormState>({ user: "", name: "", phone: "", email: "" });
+  const [form, setForm] = useState<FormState>({ user: search.user ?? search.u ?? "", name: "", phone: "", email: "" });
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [loading, setLoading] = useState(false);
   const [pix, setPix] = useState<Pix | null>(null);

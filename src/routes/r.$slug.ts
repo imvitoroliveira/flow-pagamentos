@@ -46,6 +46,9 @@ export const Route = createFileRoute("/r/$slug")({
         const qs = new URLSearchParams();
         if (ref) qs.set("ref", ref);
         if (plano && /^[a-z]+$/.test(plano)) qs.set("plano", plano);
+        // usuário do painel vindo do link de cobrança (?u=) preenche o formulário do /pagar
+        const user = (url.searchParams.get("u") ?? url.searchParams.get("user"))?.trim().slice(0, 64);
+        if (user) qs.set("user", user);
         const toPagar = `/pagar${qs.toString() ? `?${qs}` : ""}`;
         if (url.searchParams.get("pagar") === "1" || !c.destination_whatsapp) return Response.redirect(new URL(toPagar, url).toString(), 302);
         const msg = `${c.prefilled_message ?? "Olá! Quero assinar o NATV."}${ref ? ` [${ref}]` : ""}`;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildQueue, classifyRegua, daysUntil, formatBatch, interpolate, normalizePhoneBR, waLink } from "@/lib/cobranca";
+import { buildQueue, classifyRegua, cleanCustomerName, daysUntil, formatBatch, interpolate, normalizePhoneBR, waLink } from "@/lib/cobranca";
 
 // 12:00 em São Paulo (15:00 UTC) de 2026-11-20.
 const NOW = new Date("2026-11-20T15:00:00Z");
@@ -66,11 +66,54 @@ describe("buildQueue", () => {
     expect(ana).toMatchObject({ regua: "d3", phone: "5511999998888", name: "Ana Souza" });
     expect(ana.text).toContain("Olá Ana!");
     expect(ana.text).toContain("https://s/r/renovacao?pagar=1");
-    expect(q[1]).toMatchObject({ regua: "d0", phone: null, name: "bia" });
+    expect(q[1]).toMatchObject({ regua: "d0", phone: null, name: "Bia" });
     expect(q[2]).toMatchObject({ regua: "vencido" });
   });
   it("links e lote", () => {
     expect(waLink("5511999998888", "oi tudo")).toBe("https://web.whatsapp.com/send?phone=5511999998888&text=oi%20tudo");
     expect(formatBatch(q)).toContain("SEM NÚMERO");
+  });
+});
+
+describe("cleanCustomerName", () => {
+  it("separador com sufixo genérico descarta o sufixo", () => {
+    expect(cleanCustomerName("mara.iptv")).toEqual({ firstName: "Mara", fullName: "Mara" });
+    expect(cleanCustomerName("wilton.cliente")).toEqual({ firstName: "Wilton", fullName: "Wilton" });
+  });
+  it("separador com sobrenome vira nome completo", () => {
+    expect(cleanCustomerName("antonio.barbosa")).toEqual({ firstName: "Antonio", fullName: "Antonio Barbosa" });
+    expect(cleanCustomerName("_joao-silva_")).toEqual({ firstName: "Joao", fullName: "Joao Silva" });
+  });
+  it("sufixo genérico colado é removido", () => {
+    expect(cleanCustomerName("Fabioiptv")).toEqual({ firstName: "Fabio", fullName: "Fabio" });
+  });
+  it("sem separador nem sufixo apenas capitaliza", () => {
+    expect(cleanCustomerName("ronemoreira")).toEqual({ firstName: "Ronemoreira", fullName: "Ronemoreira" });
+  });
+  it("nome salvo no pedido tem prioridade", () => {
+    expect(cleanCustomerName("ronemoreira", "  Rone Moreira ")).toEqual({ firstName: "Rone", fullName: "Rone Moreira" });
+  });
+});
+
+describe("buildQueue: nome limpo e link com usuário", () => {
+  const NOW2 = new Date("2026-11-20T15:00:00Z");
+  const at2 = (d: number) => new Date(NOW2.getTime() + d * 86_400_000).toISOString();
+  const clients = [
+    { username: "mara.iptv", phone: "11999998888", expires_at: at2(3), blocked: false },
+    { username: "ronemoreira", phone: "11999997777", expires_at: at2(1), blocked: false },
+  ];
+  it("usa o primeiro nome e anexa u= (codificado) ao link", () => {
+    const q = buildQueue({ clients, scheduledUsernames: [], names: new Map([["ronemoreira", "Rone Moreira"]]), link: "https://s/r/renovacao?pagar=1", now: NOW2 });
+    const mara = q.find((i) => i.username === "mara.iptv")!;
+    expect(mara.name).toBe("Mara");
+    expect(mara.text).toContain("Olá Mara!");
+    expect(mara.text).toContain("https://s/r/renovacao?pagar=1&u=mara.iptv");
+    const rone = q.find((i) => i.username === "ronemoreira")!;
+    expect(rone.name).toBe("Rone Moreira");
+    expect(rone.text).toContain("Olá Rone,");
+  });
+  it("link sem query usa ? e codifica caracteres especiais", () => {
+    const q = buildQueue({ clients: [{ username: "a b&c", phone: null, expires_at: at2(3), blocked: false }], scheduledUsernames: [], link: "https://s/pagar", now: NOW2 });
+    expect(q[0]!.text).toContain("https://s/pagar?u=a%20b%26c");
   });
 });
