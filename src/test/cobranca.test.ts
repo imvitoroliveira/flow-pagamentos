@@ -117,3 +117,23 @@ describe("buildQueue: nome limpo e link com usuário", () => {
     expect(q[0]!.text).toContain("https://s/pagar?u=a%20b%26c");
   });
 });
+
+describe("buildQueue: cada aviso usa a própria mensagem configurada", () => {
+  const N = new Date("2026-11-20T15:00:00Z");
+  const at = (d: number) => new Date(N.getTime() + d * 86_400_000).toISOString();
+  it("D-3, D-1, D-0 e vencido recebem textos diferentes, com quebras de linha preservadas", () => {
+    const templates = { d3: "TRES {nome}\nlinha2", d1: "AMANHA {nome}", d0: "HOJE {nome}", vencido: "VENCEU {nome}" };
+    const clients = [
+      { username: "ana.iptv", phone: "11999990001", expires_at: at(3), blocked: false },
+      { username: "bia.iptv", phone: "11999990002", expires_at: at(1), blocked: false },
+      { username: "caio.iptv", phone: "11999990003", expires_at: at(0), blocked: false },
+      { username: "duda.iptv", phone: "11999990004", expires_at: at(-1), blocked: false },
+    ];
+    const q = buildQueue({ clients, scheduledUsernames: [], templates, link: "https://s", now: N });
+    const t = (u: string) => q.find((i) => i.username === u)!.text;
+    expect(t("ana.iptv")).toBe("TRES Ana\nlinha2");
+    expect(t("bia.iptv")).toBe("AMANHA Bia");
+    expect(t("caio.iptv")).toBe("HOJE Caio");
+    expect(t("duda.iptv")).toBe("VENCEU Duda");
+  });
+});

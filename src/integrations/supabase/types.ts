@@ -47,6 +47,24 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_templates: {
+        Row: {
+          body: string
+          regua: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          regua: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          regua?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campaign_links: {
         Row: {
           campaign_id: string

@@ -39,10 +39,12 @@ const STATUS_CLS: Record<RowStatus, string> = {
   no_whatsapp: "border-amber-500/50 text-amber-500", failed: "border-destructive/50 text-destructive",
 };
 
-function loadTemplates(): Templates {
-  try { const raw = localStorage.getItem(TPL_KEY); if (raw) return { ...DEFAULT_TEMPLATES, ...(JSON.parse(raw) as Partial<Templates>) }; } catch { /* sem storage */ }
-  return DEFAULT_TEMPLATES;
+/** Modelos antigos salvos só neste navegador (antes de irem para o banco). */
+function loadLocalTemplates(): Partial<Templates> | null {
+  try { const raw = localStorage.getItem(TPL_KEY); if (raw) return JSON.parse(raw) as Partial<Templates>; } catch { /* sem storage */ }
+  return null;
 }
+const REGUAS: Regua[] = ["d3", "d1", "d0", "vencido"];
 
 async function copy(text: string, ok: string) {
   try { await navigator.clipboard.writeText(text); toast.success(ok); } catch { toast.error("Não foi possível copiar"); }
@@ -65,7 +67,28 @@ function CobrancaPage() {
   const [status, setStatus] = useState<Record<string, RowStatus>>({});
   const runningRef = useRef(false);
 
-  useEffect(() => { setTemplates(loadTemplates()); }, []);
+  // Modelos ficam no banco: valem em qualquer navegador e no site publicado (antes ficavam só no navegador onde foram editados).
+  const tplQuery = useQuery({
+    queryKey: ["billing_templates"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("billing_templates").select("regua, body");
+      if (error) throw error;
+      const saved: Partial<Templates> = {};
+      for (const r of data) if ((REGUAS as string[]).includes(r.regua)) saved[r.regua as Regua] = r.body;
+      // Primeira vez: leva para o banco o que estava salvo neste navegador.
+      if (!data.length) {
+        const local = loadLocalTemplates();
+        const rows = local ? REGUAS.filter((k) => local[k]?.trim()).map((k) => ({ regua: k, body: local[k]! })) : [];
+        if (rows.length) {
+          const up = await supabase.from("billing_templates").upsert(rows);
+          if (!up.error) for (const r of rows) saved[r.regua] = r.body;
+        }
+      }
+      return { ...DEFAULT_TEMPLATES, ...saved };
+    },
+  });
+  useEffect(() => { if (tplQuery.data) setTemplates(tplQuery.data); }, [tplQuery.data]);
+  const saveTimers = useRef<Partial<Record<Regua, ReturnType<typeof setTimeout>>>>({});
 
   const clients = useQuery({
     queryKey: ["cobranca_clients"],
@@ -180,13 +203,19 @@ function CobrancaPage() {
   function stop() { window.postMessage({ source: "toptv-panel", type: "TOPTV_STOP_QUEUE" }, "*"); }
 
   function saveTemplate(r: Regua, v: string) {
-    const next = { ...templates, [r]: v };
-    setTemplates(next);
-    try { localStorage.setItem(TPL_KEY, JSON.stringify(next)); } catch { /* sem storage */ }
+    setTemplates((p) => ({ ...p, [r]: v }));
+    const t = saveTimers.current[r]; if (t) clearTimeout(t);
+    saveTimers.current[r] = setTimeout(async () => {
+      const { error } = await supabase.from("billing_templates").upsert({ regua: r, body: v, updated_at: new Date().toISOString() });
+      if (error) toast.error(`Não foi possível salvar o modelo "${REGUA_LABEL[r]}"`);
+      else qc.setQueryData(["billing_templates"], (p: Templates | undefined) => ({ ...(p ?? DEFAULT_TEMPLATES), [r]: v }));
+    }, 600);
   }
-  function resetTemplates() {
+  async function resetTemplates() {
     setTemplates(DEFAULT_TEMPLATES);
     try { localStorage.removeItem(TPL_KEY); } catch { /* sem storage */ }
+    const { error } = await supabase.from("billing_templates").upsert(REGUAS.map((k) => ({ regua: k, body: DEFAULT_TEMPLATES[k], updated_at: new Date().toISOString() })));
+    if (error) toast.error("Não foi possível restaurar os modelos"); else qc.setQueryData(["billing_templates"], DEFAULT_TEMPLATES);
   }
 
   async function syncNow() {
@@ -200,8 +229,8 @@ function CobrancaPage() {
     } catch { toast.error("Não foi possível sincronizar. Tente de novo."); } finally { setSyncing(false); }
   }
 
-  const loading = clients.isLoading || schedules.isLoading || recent.isLoading;
-  const failed = clients.isError || schedules.isError || recent.isError;
+  const loading = clients.isLoading || schedules.isLoading || recent.isLoading || tplQuery.isLoading;
+  const failed = clients.isError || schedules.isError || recent.isError || tplQuery.isError;
   const allOn = rows.length > 0 && rows.filter((i) => i.phone).every((i) => !off.has(i.username));
   const toggleAll = (on: boolean) => setOff((p) => { const n = new Set(p); for (const i of rows) { if (on) n.delete(i.username); else n.add(i.username); } return n; });
   const toggle = (u: string, on: boolean) => setOff((p) => { const n = new Set(p); if (on) n.delete(u); else n.add(u); return n; });
@@ -238,7 +267,7 @@ function CobrancaPage() {
       <details className="rounded-lg border p-3">
         <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">Modelos de mensagem e link</summary>
         <div className="mt-3 space-y-3">
-          <p className="text-xs text-muted-foreground">Variáveis: {"{nome}"}, {"{usuario}"}, {"{vencimento}"}, {"{dias}"}, {"{link}"}. Salvo neste navegador.</p>
+          <p className="text-xs text-muted-foreground">Variáveis: {"{nome}"}, {"{usuario}"}, {"{vencimento}"}, {"{dias}"}, {"{link}"}. Salvo no sistema (vale em qualquer navegador).</p>
           <div className="space-y-1">
             <Label htmlFor="cb-camp">Campanha do link de renovação</Label>
             <select id="cb-camp" className="h-11 w-full rounded-md border bg-background px-3 text-sm" value={campaignSlug} onChange={(e) => setCampaignSlug(e.target.value)}>
@@ -268,7 +297,7 @@ function CobrancaPage() {
           {running ? (
             <Button variant="destructive" className="h-11" onClick={stop}><Square className="mr-2 h-4 w-4" />Pausar / Cancelar Fila</Button>
           ) : (
-            <Button className="h-11" disabled={!extOk || !sendable.length} onClick={start}>
+            <Button className="h-11" disabled={!extOk || !sendable.length || !tplQuery.data} onClick={start}>
               <MessageCircle className="mr-2 h-4 w-4" />Iniciar Envios Automáticos ({sendable.length})
             </Button>
           )}
@@ -288,7 +317,7 @@ function CobrancaPage() {
       </Card>
 
       {loading ? <ListSkeleton /> : failed ? (
-        <Card className="p-6 text-center"><p>Não foi possível carregar a fila.</p><Button className="mt-3 h-11" onClick={() => { void clients.refetch(); void schedules.refetch(); void recent.refetch(); }}>Tentar novamente</Button></Card>
+        <Card className="p-6 text-center"><p>Não foi possível carregar a fila.</p><Button className="mt-3 h-11" onClick={() => { void clients.refetch(); void schedules.refetch(); void recent.refetch(); void tplQuery.refetch(); }}>Tentar novamente</Button></Card>
       ) : !clients.data?.length ? (
         <Card className="p-6 text-center"><p className="font-medium">Nenhum cliente sincronizado.</p><p className="text-sm text-muted-foreground">Sincronize a base em Clientes → “Sincronizar com painel NATV”.</p></Card>
       ) : !rows.length ? (
