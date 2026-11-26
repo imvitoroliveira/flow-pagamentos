@@ -80,3 +80,19 @@ describe("gravação da referência da LP no localStorage", () => {
     expect(readStoredRef(raw, now + REF_TTL_MS)).toBeNull();
   });
 });
+
+import { findRiskyTerms, LP_TEMPLATES, DEFAULT_BENEFITS, DEFAULT_FAQ } from "@/lib/landing";
+describe("modelos de LP (revisão da Meta)", () => {
+  it("tem os 4 modelos: geral, esportes, cinema, família", () => {
+    expect(Object.keys(LP_TEMPLATES).sort()).toEqual(["cinema", "esportes", "familia", "geral"]);
+  });
+  it("nenhum modelo usa termos que a Meta reprova", () => {
+    for (const t of Object.values(LP_TEMPLATES)) {
+      expect(findRiskyTerms(t.headline, t.subheadline, t.cta_text, t.cta_subtext, t.badge_top, t.whatsapp_message, ...t.benefits.map((b) => b.text), ...t.faq.flatMap((q) => [q.question, q.answer]))).toEqual([]);
+    }
+    expect(findRiskyTerms(...DEFAULT_BENEFITS.map((b) => b.text), ...DEFAULT_FAQ.map((q) => q.answer))).toEqual([]);
+  });
+  it("detecta termos arriscados", () => {
+    expect(findRiskyTerms("Todos os canais sem travar", "Teste grátis de 4 horas")).toEqual(["todos os canais", "teste grátis de", "sem travar"]);
+  });
+});

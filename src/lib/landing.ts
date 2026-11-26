@@ -19,32 +19,90 @@ export type PublicLanding = {
 export const BENEFIT_ICONS = ["tv", "zap", "headset", "shield", "wrench", "smartphone", "check", "star"] as const;
 export type BenefitIcon = (typeof BENEFIT_ICONS)[number];
 
+// Copy rules (Meta ad review): no "IPTV", "canais fechados", "todos os canais", "teste grátis de X horas", "TV Box", "sem travar".
+// Speak of a multimedia streaming service, demonstration and support instead.
 export const DEFAULT_BENEFITS: Benefit[] = [
-  { icon: "tv", text: "Qualidade 4K / Full HD sem travamentos" },
-  { icon: "headset", text: "Suporte ágil pelo WhatsApp" },
-  { icon: "shield", text: "Sem fidelidade, cancele quando quiser" },
-  { icon: "wrench", text: "Instalação fácil, a gente te ajuda" },
+  { icon: "tv", text: "Imagem em alta definição e reprodução estável" },
+  { icon: "headset", text: "Atendimento humano pelo WhatsApp" },
+  { icon: "shield", text: "Sem fidelidade: você decide quando parar" },
+  { icon: "wrench", text: "Configuração guiada passo a passo" },
 ];
 
 export const DEFAULT_FAQ: FaqItem[] = [
-  { question: "Como funciona o teste grátis?", answer: "Você chama no WhatsApp, recebe o acesso em poucos minutos e testa por 4 horas, sem compromisso." },
-  { question: "Preciso de cartão de crédito?", answer: "Não. O teste é liberado sem cartão e sem cadastro complicado." },
-  { question: "Funciona na minha TV?", answer: "Funciona em Smart TV (Samsung, LG), Roku, Android TV, Fire TV, TV Box, celular e computador. Se tiver dúvida, pergunte no WhatsApp." },
+  { question: "Como funciona a demonstração?", answer: "Você chama no WhatsApp, nossa equipe explica o serviço e libera uma demonstração sem compromisso para você conhecer antes de decidir." },
+  { question: "Preciso informar cartão de crédito?", answer: "Não. A demonstração não exige cartão. O pagamento só acontece se você decidir assinar, via PIX." },
+  { question: "Funciona no meu aparelho?", answer: "Funciona em Smart TVs compatíveis, Android TV, Fire TV Stick, Roku, celular e computador. Na dúvida, pergunte no WhatsApp." },
+  { question: "Posso cancelar quando quiser?", answer: "Sim. Não há contrato de fidelidade nem multa." },
 ];
 
-/** Texts used by "Criar com Modelo Padrão". */
-export const LP_TEMPLATE = {
-  headline: "Todos os canais, filmes e séries sem travar na sua TV",
-  subheadline: "Direto na Smart TV, TV Box ou celular. Peça seu teste grátis agora e veja a diferença.",
-  cta_text: "Quero Meu Teste Grátis no WhatsApp",
-  cta_subtext: "Ativação imediata em menos de 2 minutos",
-  badge_top: "🔥 TESTE GRÁTIS DE 4 HORAS LIBERADO",
-  whatsapp_message: "Olá! Vim pelo anúncio e quero meu teste grátis.",
-  benefits: DEFAULT_BENEFITS,
-  faq: DEFAULT_FAQ,
-} as const;
+export type LpTemplateKey = "geral" | "esportes" | "cinema" | "familia";
+export type LpTemplate = { label: string; headline: string; subheadline: string; cta_text: string; cta_subtext: string; badge_top: string; whatsapp_message: string; benefits: Benefit[]; faq: FaqItem[] };
 
-export const DEVICES = ["Smart TV Samsung / LG", "Roku", "Android TV", "Fire TV", "TV Box", "Celular", "PC"] as const;
+/** Niche templates used by the admin "Criar com modelo" buttons. */
+export const LP_TEMPLATES: Record<LpTemplateKey, LpTemplate> = {
+  geral: {
+    label: "Streaming geral",
+    headline: "Sua central de entretenimento na sua TV",
+    subheadline: "Conteúdos em alta definição, lançamentos e transmissões com estabilidade no aparelho que você já tem.",
+    cta_text: "Quero conhecer no WhatsApp", cta_subtext: "Atendimento em menos de 2 minutos",
+    badge_top: "⭐ Experiência premium", whatsapp_message: "Olá! Gostaria de conhecer o serviço e ver como funciona.",
+    benefits: DEFAULT_BENEFITS, faq: DEFAULT_FAQ,
+  },
+  esportes: {
+    label: "Esportes",
+    headline: "Acompanhe cada lance em tempo real",
+    subheadline: "Transmissões esportivas fluidas em alta resolução na sua Smart TV, TV Stick ou celular.",
+    cta_text: "Pedir demonstração no WhatsApp", cta_subtext: "Demonstração sem compromisso",
+    badge_top: "⚽ Esportes em alta definição", whatsapp_message: "Olá! Vi o anúncio de esportes e quero ver uma demonstração.",
+    benefits: [
+      { icon: "zap", text: "Transmissão fluida, sem atraso perceptível" },
+      { icon: "tv", text: "Alta definição na TV ou no celular" },
+      { icon: "headset", text: "Suporte rápido em dia de jogo" },
+      { icon: "shield", text: "Sem fidelidade e sem multa" },
+    ],
+    faq: DEFAULT_FAQ,
+  },
+  cinema: {
+    label: "Filmes e séries",
+    headline: "Cinema e séries no conforto do seu sofá",
+    subheadline: "Títulos sob demanda com imagem superior e som imersivo para toda a família maratonar.",
+    cta_text: "Pedir demonstração no WhatsApp", cta_subtext: "Sem contrato de fidelidade",
+    badge_top: "🎬 Catálogo sempre atualizado", whatsapp_message: "Olá! Quero conhecer o catálogo de filmes e séries.",
+    benefits: [
+      { icon: "star", text: "Lançamentos e clássicos sob demanda" },
+      { icon: "tv", text: "Imagem em alta definição" },
+      { icon: "smartphone", text: "Continue assistindo em outro aparelho" },
+      { icon: "shield", text: "Sem fidelidade e sem multa" },
+    ],
+    faq: DEFAULT_FAQ,
+  },
+  familia: {
+    label: "Família",
+    headline: "Entretenimento para toda a sua casa",
+    subheadline: "Desenhos, documentários e variedades com navegação simples para todas as idades.",
+    cta_text: "Falar com atendente no WhatsApp", cta_subtext: "Configuração guiada passo a passo",
+    badge_top: "🧸 Diversão para a família", whatsapp_message: "Olá! Quero saber mais sobre a programação para a família.",
+    benefits: [
+      { icon: "star", text: "Conteúdo infantil e educativo" },
+      { icon: "tv", text: "Navegação simples para todas as idades" },
+      { icon: "headset", text: "Ajuda humana pelo WhatsApp" },
+      { icon: "shield", text: "Sem fidelidade e sem multa" },
+    ],
+    faq: DEFAULT_FAQ,
+  },
+};
+
+/** Default template ("Criar com Modelo Padrão"). */
+export const LP_TEMPLATE = LP_TEMPLATES.geral;
+
+/** Terms Meta's ad review flags on streaming landing pages (checked in tests and shown as a warning in the admin). */
+export const RISKY_TERMS = ["iptv", "canais fechados", "canais abertos e fechados", "todos os canais", "tv box", "p2p", "pirata", "desbloqueado", "premiere", "teste grátis de", "sem travar"] as const;
+export function findRiskyTerms(...texts: Array<string | null | undefined>): string[] {
+  const all = texts.join(" \n ").toLowerCase();
+  return RISKY_TERMS.filter((t) => all.includes(t));
+}
+
+export const DEVICES = ["Smart TV", "Android TV", "Fire TV Stick", "Roku", "Celular", "Computador"] as const;
 
 const digits = (s: string | null | undefined) => (s ?? "").replace(/\D/g, "");
 

@@ -13,7 +13,9 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as PagarRouteImport } from './routes/pagar'
+import { Route as PrivacidadeRouteImport } from './routes/privacidade'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as TermosRouteImport } from './routes/termos'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedVendedorRouteImport } from './routes/_authenticated/vendedor'
 import { Route as LpSlugRouteImport } from './routes/lp.$slug'
@@ -58,9 +60,19 @@ const PagarRoute = PagarRouteImport.update({
   path: '/pagar',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacidadeRoute = PrivacidadeRouteImport.update({
+  id: '/privacidade',
+  path: '/privacidade',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermosRoute = TermosRouteImport.update({
+  id: '/termos',
+  path: '/termos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -199,7 +211,9 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos': typeof TermosRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/vendedor': typeof AuthenticatedVendedorRoute
   '/lp/$slug': typeof LpSlugRoute
@@ -229,7 +243,9 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos': typeof TermosRoute
   '/vendedor': typeof AuthenticatedVendedorRoute
   '/lp/$slug': typeof LpSlugRoute
   '/r/$slug': typeof RSlugRoute
@@ -260,7 +276,9 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/pagar': typeof PagarRoute
+  '/privacidade': typeof PrivacidadeRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/termos': typeof TermosRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/vendedor': typeof AuthenticatedVendedorRoute
   '/lp/$slug': typeof LpSlugRoute
@@ -292,7 +310,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/privacidade'
     | '/reset-password'
+    | '/termos'
     | '/admin'
     | '/vendedor'
     | '/lp/$slug'
@@ -322,7 +342,9 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/pagar'
+    | '/privacidade'
     | '/reset-password'
+    | '/termos'
     | '/vendedor'
     | '/lp/$slug'
     | '/r/$slug'
@@ -352,7 +374,9 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/pagar'
+    | '/privacidade'
     | '/reset-password'
+    | '/termos'
     | '/_authenticated/admin'
     | '/_authenticated/vendedor'
     | '/lp/$slug'
@@ -384,7 +408,9 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   PagarRoute: typeof PagarRoute
+  PrivacidadeRoute: typeof PrivacidadeRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  TermosRoute: typeof TermosRoute
   LpSlugRoute: typeof LpSlugRoute
   RSlugRoute: typeof RSlugRoute
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
@@ -427,11 +453,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PagarRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacidade': {
+      id: '/privacidade'
+      path: '/privacidade'
+      fullPath: '/privacidade'
+      preLoaderRoute: typeof PrivacidadeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/termos': {
+      id: '/termos'
+      path: '/termos'
+      fullPath: '/termos'
+      preLoaderRoute: typeof TermosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin': {
@@ -656,7 +696,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   PagarRoute: PagarRoute,
+  PrivacidadeRoute: PrivacidadeRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  TermosRoute: TermosRoute,
   LpSlugRoute: LpSlugRoute,
   RSlugRoute: RSlugRoute,
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,

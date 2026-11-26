@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Headset, MessageCircle, ShieldCheck, Smartphone, Star, Tv, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { getLandingPage } from "@/lib/landing.functions";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/lp/$slug")({
   },
   head: ({ loaderData }) => {
     const t = loaderData?.headline ?? "NATV";
-    const d = loaderData?.subheadline ?? "Teste grátis no WhatsApp";
+    const d = loaderData?.subheadline ?? "Atendimento pelo WhatsApp";
     return { meta: [{ title: t }, { name: "description", content: d }, { property: "og:title", content: t }, { property: "og:description", content: d }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }, { name: "robots", content: "noindex" }] };
   },
   component: LandingPage,
@@ -92,14 +92,14 @@ function LandingPage() {
 
   const steps = [
     { n: "1", t: "Toque no botão", d: "Abre o WhatsApp com a mensagem pronta." },
-    { n: "2", t: "Receba o acesso", d: "Login liberado em poucos minutos." },
-    { n: "3", t: "Assista na hora", d: "Na TV, TV Box ou celular." },
+    { n: "2", t: "Converse com a equipe", d: "Tiramos suas dúvidas e liberamos a demonstração." },
+    { n: "3", t: "Aproveite em minutos", d: "Na Smart TV, TV Stick ou celular." },
   ];
   const showcase = [
-    { e: "⚽", t: "Futebol ao vivo", d: "Campeonatos e jogos" },
-    { e: "🎬", t: "Filmes", d: "Lançamentos em HD" },
-    { e: "📺", t: "Canais", d: "Abertos e fechados" },
-    { e: "🧸", t: "Infantil", d: "Desenhos 24h" },
+    { e: "⚽", t: "Esportes", d: "Transmissões em tempo real" },
+    { e: "🎬", t: "Filmes e séries", d: "Catálogo sob demanda" },
+    { e: "📺", t: "Variedades", d: "Notícias e entretenimento" },
+    { e: "🧸", t: "Família", d: "Desenhos e educativos" },
   ];
 
   return (
@@ -110,7 +110,7 @@ function LandingPage() {
           <span className="font-display text-lg font-extrabold tracking-widest text-primary">NATV</span>
           <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
             <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75 motion-reduce:hidden" /><span className="relative inline-flex h-2 w-2 rounded-full bg-primary" /></span>
-            Servidor online
+            Atendimento online
           </span>
         </nav>
 
@@ -120,7 +120,7 @@ function LandingPage() {
           {lp.subheadline && <p className="text-base leading-relaxed text-muted-foreground">{lp.subheadline}</p>}
           <div className="flex items-center justify-center gap-1 text-primary" aria-label="Avaliação 5 estrelas">
             {[0, 1, 2, 3, 4].map((i) => <Star key={i} className="h-4 w-4 fill-current" />)}
-            <span className="ml-2 text-xs text-muted-foreground">Clientes satisfeitos em todo o Brasil</span>
+            <span className="ml-2 text-xs text-muted-foreground">Bem avaliado por assinantes em todo o Brasil</span>
           </div>
         </header>
 
@@ -183,12 +183,28 @@ function LandingPage() {
         </section>
 
         {renderCta("lp-cta-bottom")}
+
+        <section aria-label="Garantias" className="grid grid-cols-3 gap-2 text-center">
+          {[{ I: ShieldCheck, t: "Site seguro" }, { I: Headset, t: "Suporte humano" }, { I: Check, t: "Sem fidelidade" }].map(({ I, t }) => (
+            <div key={t} className="rounded-xl border border-border bg-card/60 p-3"><I className="mx-auto h-5 w-5 text-primary" /><p className="mt-1 text-xs text-muted-foreground">{t}</p></div>
+          ))}
+        </section>
+
+        <footer className="space-y-3 border-t border-border pt-6 text-center text-xs leading-relaxed text-muted-foreground">
+          <nav aria-label="Informações legais" className="flex justify-center gap-4">
+            <Link to="/termos" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-foreground">Termos de Uso</Link>
+            <Link to="/privacidade" target="_blank" rel="noopener noreferrer" className="underline underline-offset-4 hover:text-foreground">Política de Privacidade</Link>
+          </nav>
+          <p>Este site não é afiliado ao Facebook, Instagram ou à Meta Platforms, Inc. Depois que você sai das plataformas da Meta, a responsabilidade pelo conteúdo e pelos serviços é exclusivamente deste site. Marcas e nomes citados pertencem aos seus respectivos donos.</p>
+          <p>A NATV oferece acesso e suporte a um serviço de streaming multimídia. Não comercializamos aparelhos nem conteúdo de terceiros.</p>
+          <p>© {new Date().getFullYear()} NATV. Todos os direitos reservados.</p>
+        </footer>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background/90 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur">
         <div className="mx-auto max-w-md">
           <button type="button" onClick={onCta} disabled={!lp.whatsapp || busy} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-bold text-primary-foreground shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60">
-            <MessageCircle className="h-5 w-5" /> Teste grátis no WhatsApp
+            <MessageCircle className="h-5 w-5" /> Falar no WhatsApp
           </button>
         </div>
       </div>

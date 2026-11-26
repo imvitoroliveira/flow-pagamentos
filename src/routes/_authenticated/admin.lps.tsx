@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Copy, CopyPlus, ExternalLink, Loader2, Pencil, Plus, Power, Sparkles, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { publicUrl } from "@/lib/site-url";
-import { BENEFIT_ICONS, conversionRate, LP_TEMPLATE, type Benefit, type FaqItem, type LandingPageRow } from "@/lib/landing";
+import { BENEFIT_ICONS, conversionRate, findRiskyTerms, LP_TEMPLATES, type Benefit, type FaqItem, type LandingPageRow } from "@/lib/landing";
 import { landingPageSchema, extractMetaPixel, slugify } from "@/lib/admin-schemas";
 import { deleteLandingPage, duplicateLandingPage, saveLandingPage, setLandingPageActive } from "@/lib/admin-actions.functions";
 import { Confirm } from "@/components/admin/confirm";
@@ -29,7 +29,7 @@ type Form = {
   id?: string; campaign_id: string; title: string; slug: string; headline: string; subheadline: string; cta_text: string; cta_subtext: string;
   badge_top: string; whatsapp_number: string; whatsapp_message: string; meta_pixel_id: string; benefits: Benefit[]; faq: FaqItem[]; active: boolean;
 };
-const EMPTY: Form = { campaign_id: "", title: "", slug: "", headline: "", subheadline: "", cta_text: "Quero Meu Teste Grátis no WhatsApp", cta_subtext: "Ativação imediata em menos de 2 minutos", badge_top: "", whatsapp_number: "", whatsapp_message: "", meta_pixel_id: "", benefits: [], faq: [], active: true };
+const EMPTY: Form = { campaign_id: "", title: "", slug: "", headline: "", subheadline: "", cta_text: "Quero conhecer no WhatsApp", cta_subtext: "Atendimento em menos de 2 minutos", badge_top: "", whatsapp_number: "", whatsapp_message: "", meta_pixel_id: "", benefits: [], faq: [], active: true };
 const ICON_LABEL: Record<string, string> = { tv: "TV", zap: "Raio", headset: "Suporte", shield: "Escudo", wrench: "Instalação", smartphone: "Celular", check: "Check", star: "Estrela" };
 const selectCls = "h-11 w-full rounded-md border bg-background px-3 text-sm";
 
@@ -176,12 +176,24 @@ function LpForm({ initial, campaigns, onSave }: { initial: Form; campaigns: { id
         <SheetDescription>Textos, botão de WhatsApp e rastreamento. Campos vazios herdam da campanha.</SheetDescription>
       </SheetHeader>
       <div className="mt-4 space-y-4">
-        {!f.id && (
-          <Button type="button" variant="outline" className="h-11 w-full" onClick={() => setF((p) => ({
-            ...p, headline: LP_TEMPLATE.headline, subheadline: LP_TEMPLATE.subheadline, cta_text: LP_TEMPLATE.cta_text, cta_subtext: LP_TEMPLATE.cta_subtext,
-            badge_top: LP_TEMPLATE.badge_top, whatsapp_message: LP_TEMPLATE.whatsapp_message, benefits: LP_TEMPLATE.benefits.map((b) => ({ ...b })), faq: LP_TEMPLATE.faq.map((q) => ({ ...q })),
-          }))}><Sparkles className="mr-2 h-4 w-4" />Criar com Modelo Padrão</Button>
-        )}
+        <div className="space-y-2">
+          <p className="flex items-center gap-2 text-sm font-medium"><Sparkles className="h-4 w-4 text-primary" />{f.id ? "Trocar textos por um modelo" : "Criar com modelo"}</p>
+          <div className="grid grid-cols-2 gap-2">
+            {(Object.keys(LP_TEMPLATES) as Array<keyof typeof LP_TEMPLATES>).map((k) => {
+              const t = LP_TEMPLATES[k];
+              return (
+                <Button key={k} type="button" variant="outline" className="h-11" onClick={() => setF((p) => ({
+                  ...p, headline: t.headline, subheadline: t.subheadline, cta_text: t.cta_text, cta_subtext: t.cta_subtext,
+                  badge_top: t.badge_top, whatsapp_message: t.whatsapp_message, benefits: t.benefits.map((b) => ({ ...b })), faq: t.faq.map((q) => ({ ...q })),
+                }))}>{t.label}</Button>
+              );
+            })}
+          </div>
+          {(() => {
+            const risky = findRiskyTerms(f.headline, f.subheadline, f.cta_text, f.cta_subtext, f.badge_top, f.whatsapp_message, ...f.benefits.map((b) => b.text), ...f.faq.flatMap((q) => [q.question, q.answer]));
+            return risky.length ? <p role="alert" className="rounded-md border border-destructive/50 bg-destructive/10 p-2 text-xs text-destructive">Termos que a Meta costuma reprovar: {risky.join(", ")}. Troque antes de anunciar.</p> : null;
+          })()}
+        </div>
 
         <div className="space-y-1">
           <Label htmlFor="lp-camp">Campanha associada</Label>
