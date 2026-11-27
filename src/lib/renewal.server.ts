@@ -36,7 +36,7 @@ export async function panelGet(path: string) {
   return { ok: res.ok, status: res.status, json, text };
 }
 
-async function panelPost(path: string, body: unknown) {
+export async function panelPost(path: string, body: unknown) {
   const { url, key } = panel();
   const res = await fetch(url + path, {
     method: "POST",

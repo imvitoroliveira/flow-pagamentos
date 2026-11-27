@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { DateRange } from "react-day-picker";
 import {
-  BarChart3, CalendarDays, ChevronRight, Filter, CalendarClock, Funnel, LayoutDashboard, LogOut, Megaphone, MessageSquareShare, PanelTop, Receipt, ScrollText, Settings, ShoppingBag, TrendingUp, UserRound, Users,
+  BarChart3, CalendarDays, ChevronRight, Filter, FlaskConical, CalendarClock, Funnel, LayoutDashboard, LogOut, Megaphone, MessageSquareShare, PanelTop, Receipt, ScrollText, Settings, ShoppingBag, TrendingUp, UserRound, Users,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { checkAdmin } from "@/lib/admin.functions";
@@ -68,6 +68,7 @@ const NAV_GROUPS = [
       { to: "/admin/clientes", label: "Clientes", icon: UserRound },
       { to: "/admin/cobranca", label: "Cobrança WhatsApp", icon: MessageSquareShare },
       { to: "/admin/futuros", label: "Vencimentos Futuros", icon: CalendarClock },
+      { to: "/admin/testes", label: "Testes Rápidos", icon: FlaskConical },
     ],
   },
   {

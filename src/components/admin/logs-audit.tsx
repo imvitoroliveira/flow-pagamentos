@@ -10,6 +10,8 @@ const ACTION_LABEL: Record<string, string> = {
   "campaign.activate": "Campanha reativada",
   "campaign.archive": "Campanha arquivada",
   "campaign.delete": "Campanha excluída",
+  "test_created": "Teste gerado",
+  "test_extended": "Teste estendido",
   "landing_page.create": "Landing Page criada",
   "landing_page.update": "Landing Page editada",
   "landing_page.duplicate": "Landing Page duplicada",

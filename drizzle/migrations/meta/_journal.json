@@ -127,6 +127,13 @@
       "when": 1795742697818,
       "tag": "0017_landing_view_source_compatibility",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795742698819,
+      "tag": "0018_test_accounts",
+      "breakpoints": true
     }
   ]
 }
