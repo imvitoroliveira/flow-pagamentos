@@ -4,4 +4,4 @@
 - [x] Respeitar escolhas de privacidade e atualizar divulgação.
 - [x] Verificar testes e jornada, salvar alterações.
 - [x] Manter sem aviso automático, bloqueando regiões obrigatórias/desconhecidas e recusas.
-- [ ] Vincular trafegofb à campanha: aguardando identificação pelo usuário.
+- [x] Vincular trafegofb à campanha CampanhaV1_FacebookADS e confirmar o vínculo no banco.
