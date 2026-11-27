@@ -31,3 +31,7 @@
 - Payment links are named campaign_links: /r/<campaign slug>?l=<code>&pagar=1 records the click with link_id, then opens /pagar. Why: per-link attribution without touching the payment core.
 - Multi-month plans renew fractionally: renewCustomer activates 1 month and creates a credit_schedules row; processCreditSchedules (run once a day, 08:00 BRT / 11:00 UTC, by /api/public/process-drip; manual cash sales are created from /admin/futuros via createManualSchedule) applies 1 more month 2 days before each expiration. Panel client list is cached in panel_clients via syncPanelClients (panel allows 1 report call/min). Why: keep reseller credits free for turnover and avoid the report rate limit.
 - Billing reminder templates (one per régua stage) live in public.billing_templates (admin-only RLS), not localStorage. Why: preview and published sites are different origins, so browser storage made sends fall back to defaults.
+
+- LP visits and WhatsApp button clicks are recorded transactionally by service-only RPCs; clicks are not confirmed conversations. Why: the funnel must reflect observed actions without duplicate counters.
+- Meta events use stable per-outcome IDs and preserve opaque fbclid/fbc; LP receipt status is persisted only after checking events_received. Why: navigation, retries and HTTP success alone do not establish provider receipt.
+- Advertising permission gates Pixel and CAPI; persisted choices override geography and matching requires explicit acceptance. Why: server delivery must not bypass visitor refusals.

@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequest } from "@tanstack/react-start/server";
 import { z } from "zod";
 
 async function admin() {
@@ -40,6 +41,12 @@ export const trackEvent = createServerFn({ method: "POST" })
 export const createOrder = createServerFn({ method: "POST" })
   .inputValidator((d) => createPaymentSchemaClient.parse(d))
   .handler(async ({ data }) => {
+    const { advertisingPermission } = await import("./advertising.server");
+    const permission = await advertisingPermission(getRequest());
+    if(data.ref_code) {
+      const sb=await admin();
+      await sb.from("clicks").update({advertising_allowed:permission.allowed,advertising_choice_id:permission.choiceId}).eq("ref_code",data.ref_code);
+    }
     const { createPayment, PublicError } = await import("./payments.server");
     try {
       return await createPayment(data);

@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminMetricasRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminPedidosRouteImport } from './routes/_authenticated/admin.pedidos'
 import { Route as AuthenticatedAdminVendedoresRouteImport } from './routes/_authenticated/admin.vendedores'
 import { Route as ApiPublicAbacatepayWebhookRouteImport } from './routes/api/public/abacatepay-webhook'
+import { Route as ApiPublicAdvertisingChoiceRouteImport } from './routes/api/public/advertising-choice'
 import { Route as ApiPublicCheckOrderStatusRouteImport } from './routes/api/public/check-order-status'
 import { Route as ApiPublicCreatePaymentRouteImport } from './routes/api/public/create-payment'
 import { Route as ApiPublicLpLeadRouteImport } from './routes/api/public/lp-lead'
@@ -169,6 +170,12 @@ const ApiPublicAbacatepayWebhookRoute =
     path: '/api/public/abacatepay-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAdvertisingChoiceRoute =
+  ApiPublicAdvertisingChoiceRouteImport.update({
+    id: '/api/public/advertising-choice',
+    path: '/api/public/advertising-choice',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCheckOrderStatusRoute =
   ApiPublicCheckOrderStatusRouteImport.update({
     id: '/api/public/check-order-status',
@@ -230,6 +237,7 @@ export interface FileRoutesByFullPath {
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/advertising-choice': typeof ApiPublicAdvertisingChoiceRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
@@ -261,6 +269,7 @@ export interface FileRoutesByTo {
   '/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/advertising-choice': typeof ApiPublicAdvertisingChoiceRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
@@ -295,6 +304,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/pedidos': typeof AuthenticatedAdminPedidosRoute
   '/_authenticated/admin/vendedores': typeof AuthenticatedAdminVendedoresRoute
   '/api/public/abacatepay-webhook': typeof ApiPublicAbacatepayWebhookRoute
+  '/api/public/advertising-choice': typeof ApiPublicAdvertisingChoiceRoute
   '/api/public/check-order-status': typeof ApiPublicCheckOrderStatusRoute
   '/api/public/create-payment': typeof ApiPublicCreatePaymentRoute
   '/api/public/lp-lead': typeof ApiPublicLpLeadRoute
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
+    | '/api/public/advertising-choice'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/lp-lead'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/pedidos'
     | '/admin/vendedores'
     | '/api/public/abacatepay-webhook'
+    | '/api/public/advertising-choice'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/lp-lead'
@@ -393,6 +405,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/pedidos'
     | '/_authenticated/admin/vendedores'
     | '/api/public/abacatepay-webhook'
+    | '/api/public/advertising-choice'
     | '/api/public/check-order-status'
     | '/api/public/create-payment'
     | '/api/public/lp-lead'
@@ -414,6 +427,7 @@ export interface RootRouteChildren {
   LpSlugRoute: typeof LpSlugRoute
   RSlugRoute: typeof RSlugRoute
   ApiPublicAbacatepayWebhookRoute: typeof ApiPublicAbacatepayWebhookRoute
+  ApiPublicAdvertisingChoiceRoute: typeof ApiPublicAdvertisingChoiceRoute
   ApiPublicCheckOrderStatusRoute: typeof ApiPublicCheckOrderStatusRoute
   ApiPublicCreatePaymentRoute: typeof ApiPublicCreatePaymentRoute
   ApiPublicLpLeadRoute: typeof ApiPublicLpLeadRoute
@@ -593,6 +607,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAbacatepayWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/advertising-choice': {
+      id: '/api/public/advertising-choice'
+      path: '/api/public/advertising-choice'
+      fullPath: '/api/public/advertising-choice'
+      preLoaderRoute: typeof ApiPublicAdvertisingChoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/check-order-status': {
       id: '/api/public/check-order-status'
       path: '/api/public/check-order-status'
@@ -702,6 +723,7 @@ const rootRouteChildren: RootRouteChildren = {
   LpSlugRoute: LpSlugRoute,
   RSlugRoute: RSlugRoute,
   ApiPublicAbacatepayWebhookRoute: ApiPublicAbacatepayWebhookRoute,
+  ApiPublicAdvertisingChoiceRoute: ApiPublicAdvertisingChoiceRoute,
   ApiPublicCheckOrderStatusRoute: ApiPublicCheckOrderStatusRoute,
   ApiPublicCreatePaymentRoute: ApiPublicCreatePaymentRoute,
   ApiPublicLpLeadRoute: ApiPublicLpLeadRoute,

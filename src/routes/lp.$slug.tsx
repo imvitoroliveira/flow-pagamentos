@@ -3,6 +3,9 @@ import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, Headset, MessageCircle, ShieldCheck, Smartphone, Star, Tv, Wrench, Zap, type LucideIcon } from "lucide-react";
 import { getLandingPage } from "@/lib/landing.functions";
 import { buildWhatsappUrl, DEVICES, type PublicLanding } from "@/lib/landing";
+import { CookieSettings } from "@/components/cookie-settings";
+import { canTrack, onConsentChange } from "@/lib/consent";
+import { leadEventId, visitorSessionId } from "@/lib/landing-tracking";
 import { initPixel, readCookie, trackPixel } from "@/lib/meta-pixel";
 import { readStoredRef, REF_KEY, serializeRef, shouldStoreRef } from "@/lib/ref-storage";
 
@@ -39,40 +42,53 @@ function LandingPage() {
   const leadSent = useRef(false);
   const [busy, setBusy] = useState(false);
 
+  async function registerVisit() {
+    const allowed = await canTrack("advertising");
+    if(allowed && lp.pixelId) await initPixel(lp.pixelId);
+    const response = await fetch("/api/public/lp-view",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({slug:lp.slug,sessionId:visitorSessionId(),fbclid:allowed?new URLSearchParams(window.location.search).get("fbclid"):null})});
+    if(!response.ok) return null;
+    const result = await response.json() as {ref?:string|null};
+    if(result.ref) { persistRef(result.ref,true); try {sessionStorage.setItem(refKey(lp.slug),result.ref);}catch{} }
+    return result.ref ?? null;
+  }
   useEffect(() => {
-    if (lp.pixelId) initPixel(lp.pixelId);
-    // One visit = one click row. A refresh in the same session reuses the code instead of inflating views.
-    let stored: string | null = null;
-    try { stored = sessionStorage.getItem(refKey(lp.slug)); } catch { /* sem storage */ }
-    if (stored) { refPromise.current = Promise.resolve(stored); return; }
-    refPromise.current = fetch("/api/public/lp-view", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: lp.slug, fbclid: new URLSearchParams(window.location.search).get("fbclid") }),
-    }).then((r) => (r.ok ? r.json() : null)).then((j: { ref?: string | null } | null) => {
-      const ref = j?.ref ?? null;
-      if (ref) { try { sessionStorage.setItem(refKey(lp.slug), ref); } catch { /* sem storage */ } persistRef(ref, true); }
-      return ref;
-    }).catch(() => null);
-  }, [lp.pixelId, lp.slug]);
+    refPromise.current=registerVisit().catch(()=>null);
+    const unsubscribe=onConsentChange(()=>{refPromise.current=registerVisit().catch(()=>null);});
+    const restore=()=>setBusy(false);
+    window.addEventListener("pageshow",restore);
+    return ()=>{unsubscribe();window.removeEventListener("pageshow",restore);};
+  },[lp.slug,lp.pixelId]);
 
   async function onCta() {
-    if (busy || !lp.whatsapp) return;
+    if(busy || !lp.whatsapp) return;
     setBusy(true);
-    const ref = refPromise.current ? await Promise.race([refPromise.current, sleep(1200).then(() => null)]) : null;
-    if (ref) persistRef(ref, false); // renews the window without overriding a newer ref
-    if (!leadSent.current) {
-      leadSent.current = true; // only the first tap counts as a lead
-      const eventId = `lp_${ref ?? "x"}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-      trackPixel("Lead", { content_name: "whatsapp_click", ...(ref ? { ref_code: ref } : {}) }, eventId);
-      if (ref) {
-        const sent = fetch("/api/public/lp-lead", {
-          method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
-          body: JSON.stringify({ slug: lp.slug, ref, eventId, fbp: readCookie("_fbp"), fbc: readCookie("_fbc") }),
-        }).catch(() => null);
-        await Promise.race([sent, sleep(800)]); // don't hold the visitor: the server finishes on its own
+    let ref:string|null=null;
+    try {
+      ref=await Promise.race([refPromise.current ?? registerVisit(),sleep(2500).then(()=>null)]);
+      if(!ref) ref=await Promise.race([registerVisit(),sleep(1500).then(()=>null)]);
+      if(ref) persistRef(ref,false);
+      if(ref && !leadSent.current) {
+        leadSent.current=true;
+        const allowed=await canTrack("advertising");
+        const eventId=leadEventId(ref);
+        if(allowed && lp.pixelId) {
+          await initPixel(lp.pixelId);
+          await trackPixel("Lead",{content_name:"whatsapp_click"},eventId);
+        }
+        const body=JSON.stringify({slug:lp.slug,ref,fbp:allowed?readCookie("_fbp"):null,fbc:allowed?readCookie("_fbc"):null});
+        const deliver=async()=> {
+          for(let attempt=0;attempt<2;attempt++) {
+            try {const response=await fetch("/api/public/lp-lead",{method:"POST",headers:{"Content-Type":"application/json"},keepalive:true,body});if(response.ok) return;}catch{}
+          }
+          navigator.sendBeacon?.("/api/public/lp-lead",new Blob([body],{type:"application/json"}));
+        };
+        // Keepalive survives navigation; the server awaits Meta and saves the receipt before returning.
+        await Promise.race([deliver(),sleep(1400)]);
       }
+    } finally {
+      window.location.href=buildWhatsappUrl(lp.whatsapp,lp.message,ref);
+      setBusy(false);
     }
-    window.location.href = buildWhatsappUrl(lp.whatsapp, lp.message, ref);
   }
 
   const renderCta = (id: string) => (
@@ -197,6 +213,7 @@ function LandingPage() {
           </nav>
           <p>Este site não é afiliado ao Facebook, Instagram ou à Meta Platforms, Inc. Depois que você sai das plataformas da Meta, a responsabilidade pelo conteúdo e pelos serviços é exclusivamente deste site. Marcas e nomes citados pertencem aos seus respectivos donos.</p>
           <p>A NATV oferece acesso e suporte a um serviço de streaming multimídia. Não comercializamos aparelhos nem conteúdo de terceiros.</p>
+          <CookieSettings />
           <p>© {new Date().getFullYear()} NATV. Todos os direitos reservados.</p>
         </footer>
       </div>

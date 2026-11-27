@@ -13,6 +13,8 @@ import { readStoredRef, REF_KEY, serializeRef } from "@/lib/ref-storage";
 import { validateUsername } from "@/lib/renewal.functions";
 import { cn } from "@/lib/utils";
 import { initPixel, trackPixel } from "@/lib/meta-pixel";
+import { visitorSessionId as sessionId } from "@/lib/landing-tracking";
+import { CookieSettings } from "@/components/cookie-settings";
 import logoFull from "@/assets/natv-logo-full.png.asset.json";
 
 const plansQuery = queryOptions({ queryKey: ["plans"], queryFn: () => getPlans() });
@@ -41,15 +43,6 @@ export const Route = createFileRoute("/pagar")({
   notFoundComponent: () => <p className="p-8 text-center">Não encontrado.</p>,
   component: PagarPage,
 });
-
-function sessionId() {
-  let s = localStorage.getItem("natv_sid");
-  if (!s) {
-    s = crypto.randomUUID();
-    localStorage.setItem("natv_sid", s);
-  }
-  return s;
-}
 
 const formSchema = z.object({
   user: z.string().trim().min(2, "Informe o usuário do aplicativo").max(64).regex(/^\S+$/, "O usuário não pode conter espaços"),
@@ -134,7 +127,7 @@ function PagarPage() {
         },
       });
       if (r.meta_pixel_id) {
-        initPixel(r.meta_pixel_id);
+        await initPixel(r.meta_pixel_id);
         trackPixel("InitiateCheckout", { currency: "BRL", value: r.amount_cents / 100, content_ids: [slug], content_type: "product", num_items: 1 }, r.checkout_event_id);
       }
       setPix(r);
@@ -154,6 +147,7 @@ function PagarPage() {
         <p className="text-sm text-muted-foreground">Renove em menos de 1 minuto</p>
       </header>
 
+      <div className="text-center"><CookieSettings /></div>
       {step < 3 && <Steps step={step} />}
 
       {step === 1 && (

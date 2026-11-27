@@ -29,71 +29,61 @@ export async function getPublicLanding(slug: string): Promise<PublicLanding | nu
   };
 }
 
-export type RequestInfo = { ip: string | null; userAgent: string | null; cookies: Record<string, string> };
+export type RequestInfo = { ip: string | null; userAgent: string | null; cookies: Record<string, string>; allowed: boolean; explicit: boolean; choiceId: string | null; country: string | null };
 
-export function readRequestInfo(request: Request): RequestInfo {
-  const fwd = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
-  const cookies = Object.fromEntries((request.headers.get("cookie") ?? "").split(";").map((p) => p.trim().split("=")).filter((p): p is [string, string] => !!p[0] && p[1] !== undefined));
-  return { ip: fwd.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0, 500) ?? null, cookies };
+export async function readRequestInfo(request: Request): Promise<RequestInfo> {
+  const { advertisingPermission, requestCookies } = await import("./advertising.server");
+  const permission = await advertisingPermission(request);
+  const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
+  return { ...permission, cookies: permission.allowed ? requestCookies(request) : {}, ip: ip.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0,500) ?? null };
 }
 
-const clean = (v: unknown, max = 200): string | null => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
-
-/** Records a visit: click row (with ref_code + Meta params) and view counter. Crawlers/link previews are ignored. */
-export async function registerView(slug: string, body: { fbclid?: unknown }, info: RequestInfo): Promise<{ ref: string | null }> {
+export async function registerView(slug: string, body: { sessionId: string; ref?: string | null | undefined; fbclid?: string | null | undefined }, info: RequestInfo): Promise<{ ref: string | null }> {
   const { isLinkPreviewBot } = await import("./link-bots");
   if (isLinkPreviewBot(info.userAgent)) return { ref: null };
   const sb = await db();
-  const { data: lp } = await sb.from("landing_pages").select("id, campaign_id").eq("slug", slug).eq("active", true).maybeSingle<{ id: string; campaign_id: string | null }>();
-  if (!lp) return { ref: null };
   const { makeRefCode, hashIp } = await import("./checkout.server");
-  const fbclid = clean(body.fbclid);
-  const fbc = clean(info.cookies["_fbc"]) ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null);
-  let ref: string | null = makeRefCode();
-  for (let i = 0; i < 4; i++) {
-    const { error } = await sb.from("clicks").insert({
-      campaign_id: lp.campaign_id, ref_code: ref, fbp: clean(info.cookies["_fbp"]), fbc, fbclid,
-      user_agent: info.userAgent, ip_hash: info.ip ? hashIp(info.ip) : null,
-    });
-    if (!error) break;
-    ref = i === 3 ? null : makeRefCode();
+  const fbclid = info.allowed ? body.fbclid ?? null : null;
+  // fbclid is opaque: do NOT truncate it to 200 characters, which breaks Meta matching.
+  const fbc = info.allowed ? info.cookies["_fbc"] ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null) : null;
+  for(let i=0;i<4;i++) {
+    const { data, error } = await sb.rpc("record_landing_view", {p_slug:slug,p_session:body.sessionId,p_ref:makeRefCode(),p_fbclid:fbclid,p_fbc:fbc,p_fbp:info.cookies["_fbp"]??null,p_ua:info.userAgent,p_ip_hash:info.ip?hashIp(info.ip):null,p_country:info.country,p_choice:info.choiceId,p_allowed:info.allowed});
+    if(!error) return { ref: typeof data === "string" ? data : null };
+    if(error.code!=="23505") { console.error("[lp-view] database",error.code,error.message); throw new Error("Falha ao registrar visita"); }
   }
-  if (ref) await sb.rpc("lp_bump", { p_id: lp.id, p_lead: false });
-  return { ref };
+  throw new Error("Falha ao gerar referência");
 }
 
-export type LeadBody = { ref?: unknown; eventId?: unknown; fbp?: unknown; fbc?: unknown };
-
-/** Counts the lead and sends the server-side "Lead" event. Needs a click row for the ref (registered by registerView). */
-export async function registerLead(slug: string, body: LeadBody, info: RequestInfo, sourceUrl: string): Promise<{ ok: boolean }> {
-  const ref = typeof body.ref === "string" && REF_RE.test(body.ref) ? body.ref : null;
-  const eventId = typeof body.eventId === "string" && /^[A-Za-z0-9_-]{8,64}$/.test(body.eventId) ? body.eventId : null;
-  if (!ref || !eventId) return { ok: false };
+export type LeadBody = { ref: string; fbp?: string | null | undefined; fbc?: string | null | undefined };
+export async function registerLead(slug: string, body: LeadBody, info: RequestInfo, sourceUrl: string) {
   const sb = await db();
-  const { data: lp } = await sb.from("landing_pages").select("id, campaign_id, meta_pixel_id").eq("slug", slug).eq("active", true).maybeSingle<{ id: string; campaign_id: string | null; meta_pixel_id: string | null }>();
-  if (!lp) return { ok: false };
-  const { data: click } = await sb.from("clicks").select("id, fbc, fbp").eq("ref_code", ref).maybeSingle<{ id: string; fbc: string | null; fbp: string | null }>();
-  if (!click) return { ok: false };
-
-  // The Pixel cookies only exist after the page ran; complete the click with what the browser has now.
-  const fbp = click.fbp ?? clean(body.fbp);
-  const fbc = click.fbc ?? clean(body.fbc);
-  if ((fbp && !click.fbp) || (fbc && !click.fbc)) await sb.from("clicks").update({ fbp, fbc }).eq("id", click.id);
-  await sb.rpc("lp_bump", { p_id: lp.id, p_lead: true });
-
-  try {
-    const { getSetting } = await import("./integration-settings.server");
-    const token = (await getSetting("META_CAPI_TOKEN")).value;
-    if (!token) return { ok: true };
-    let pixelId = lp.meta_pixel_id?.trim() || null;
-    if (!pixelId && lp.campaign_id) pixelId = ((await sb.from("campaigns").select("meta_pixel_id").eq("id", lp.campaign_id).maybeSingle()).data as { meta_pixel_id: string | null } | null)?.meta_pixel_id?.trim() || null;
-    pixelId = pixelId || (await getSetting("META_PIXEL_ID")).value;
-    if (!pixelId) return { ok: true };
-    const { sendMetaLead } = await import("./meta-capi");
-    const testCode = (await getSetting("META_TEST_EVENT_CODE")).value;
-    await sendMetaLead(pixelId, token, { eventId, sourceUrl, fbc, fbp, userAgent: info.userAgent, ip: info.ip, refCode: ref }, testCode);
-  } catch (e) {
-    console.error("[lp-lead] capi", (e as Error).message);
+  const {data,error} = await sb.rpc("record_landing_lead",{p_slug:slug,p_ref:body.ref});
+  if(error) throw new Error("Falha ao registrar clique no WhatsApp");
+  const click = data as {id:string;lead_at:string;meta_lead_status:string|null;fbp:string|null;fbc:string|null;advertising_allowed:boolean;advertising_choice_id:string|null} | null;
+  if(!click) return {ok:false};
+  if(click.meta_lead_status === "sent" || click.meta_lead_status === "test") return {ok:true,meta:click.meta_lead_status};
+  const fbp = info.allowed ? body.fbp ?? click.fbp : null;
+  const fbc = info.allowed ? body.fbc ?? click.fbc : null;
+  await sb.from("clicks").update({fbp,fbc,advertising_allowed:info.allowed,advertising_choice_id:info.choiceId}).eq("id",click.id);
+  const {clickPermission} = await import("./advertising.server");
+  const permission = await clickPermission(body.ref);
+  let status = "blocked";
+  let failure: string | null = null;
+  if(info.allowed && permission.allowed) {
+    const {getSetting} = await import("./integration-settings.server");
+    const [token,globalPixel,testCode] = await Promise.all([getSetting("META_CAPI_TOKEN"),getSetting("META_PIXEL_ID"),getSetting("META_TEST_EVENT_CODE")]);
+    const {data:lp} = await sb.from("landing_pages").select("meta_pixel_id,campaign_id").eq("slug",slug).maybeSingle();
+    const {data:campaign} = lp?.campaign_id ? await sb.from("campaigns").select("meta_pixel_id").eq("id",lp.campaign_id).maybeSingle() : {data:null};
+    const pixelId = lp?.meta_pixel_id || campaign?.meta_pixel_id || globalPixel.value;
+    status = "not_configured";
+    if(token.value && pixelId) {
+      const {sendMetaLead} = await import("./meta-capi");
+      const {leadEventId} = await import("./landing-tracking");
+      const result = await sendMetaLead(pixelId,token.value,{eventId:leadEventId(body.ref),sourceUrl,fbc,fbp,userAgent:info.userAgent,ip:info.ip,eventTime:Math.floor(new Date(click.lead_at).getTime()/1000)},testCode.value);
+      status = result.ok ? testCode.value ? "test" : "sent" : "failed";
+      failure = result.error;
+    }
   }
-  return { ok: true };
+  await sb.from("clicks").update({meta_lead_status:status,meta_lead_error:failure}).eq("id",click.id);
+  return {ok:true,meta:status};
 }

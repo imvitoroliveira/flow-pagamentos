@@ -1,21 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-// Landing page visit: registers the click (ref_code + Meta params) and the view counter.
+import { viewSchema } from "@/lib/landing-tracking";
 export const Route = createFileRoute("/api/public/lp-view")({
-  server: {
-    handlers: {
-      POST: async ({ request }) => {
-        const body = (await request.json().catch(() => null)) as { slug?: unknown; fbclid?: unknown } | null;
-        const slug = typeof body?.slug === "string" ? body.slug : "";
-        if (!slug || slug.length > 60) return Response.json({ ref: null }, { status: 400 });
-        try {
-          const { registerView, readRequestInfo } = await import("@/lib/landing.server");
-          return Response.json(await registerView(slug, body ?? {}, readRequestInfo(request)));
-        } catch (e) {
-          console.error("[lp-view]", (e as Error).message);
-          return Response.json({ ref: null }, { status: 500 });
-        }
-      },
-    },
-  },
+ server: { handlers: { POST: async ({request}) => {
+   const {isSameOrigin} = await import("@/lib/advertising.server");
+   if(!isSameOrigin(request)) return Response.json({ok:false},{status:403});
+   const parsed = viewSchema.safeParse(await request.json().catch(()=>null));
+   if(!parsed.success) return Response.json({ok:false},{status:400});
+   try {
+     const {registerView,readRequestInfo} = await import("@/lib/landing.server");
+     return Response.json(await registerView(parsed.data.slug,parsed.data,await readRequestInfo(request)),{headers:{"Cache-Control":"no-store"}});
+   } catch { return Response.json({ok:false},{status:500}); }
+ } } }
 });

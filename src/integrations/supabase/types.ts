@@ -47,6 +47,30 @@ export type Database = {
         }
         Relationships: []
       }
+      advertising_choices: {
+        Row: {
+          choice: string
+          country: string | null
+          id: string
+          notice_version: string
+          updated_at: string
+        }
+        Insert: {
+          choice: string
+          country?: string | null
+          id?: string
+          notice_version?: string
+          updated_at?: string
+        }
+        Update: {
+          choice?: string
+          country?: string | null
+          id?: string
+          notice_version?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       billing_templates: {
         Row: {
           body: string
@@ -164,6 +188,8 @@ export type Database = {
       }
       clicks: {
         Row: {
+          advertising_allowed: boolean
+          advertising_choice_id: string | null
           campaign_id: string | null
           created_at: string
           fbc: string | null
@@ -171,14 +197,21 @@ export type Database = {
           fbp: string | null
           id: string
           ip_hash: string | null
+          landing_page_id: string | null
+          lead_at: string | null
           link_id: string | null
+          meta_lead_error: string | null
+          meta_lead_status: string | null
           ref_code: string
+          session_id: string | null
           source: string
           state: string | null
           ttclid: string | null
           user_agent: string | null
         }
         Insert: {
+          advertising_allowed?: boolean
+          advertising_choice_id?: string | null
           campaign_id?: string | null
           created_at?: string
           fbc?: string | null
@@ -186,14 +219,21 @@ export type Database = {
           fbp?: string | null
           id?: string
           ip_hash?: string | null
+          landing_page_id?: string | null
+          lead_at?: string | null
           link_id?: string | null
+          meta_lead_error?: string | null
+          meta_lead_status?: string | null
           ref_code: string
+          session_id?: string | null
           source?: string
           state?: string | null
           ttclid?: string | null
           user_agent?: string | null
         }
         Update: {
+          advertising_allowed?: boolean
+          advertising_choice_id?: string | null
           campaign_id?: string | null
           created_at?: string
           fbc?: string | null
@@ -201,8 +241,13 @@ export type Database = {
           fbp?: string | null
           id?: string
           ip_hash?: string | null
+          landing_page_id?: string | null
+          lead_at?: string | null
           link_id?: string | null
+          meta_lead_error?: string | null
+          meta_lead_status?: string | null
           ref_code?: string
+          session_id?: string | null
           source?: string
           state?: string | null
           ttclid?: string | null
@@ -210,10 +255,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "clicks_advertising_choice_id_fkey"
+            columns: ["advertising_choice_id"]
+            isOneToOne: false
+            referencedRelation: "advertising_choices"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clicks_campaign_id_fkey"
             columns: ["campaign_id"]
             isOneToOne: false
             referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clicks_landing_page_id_fkey"
+            columns: ["landing_page_id"]
+            isOneToOne: false
+            referencedRelation: "landing_pages"
             referencedColumns: ["id"]
           },
           {
@@ -773,6 +832,8 @@ export type Database = {
           p_to: string
         }
         Returns: {
+          advertising_allowed: boolean
+          advertising_choice_id: string | null
           campaign_id: string | null
           created_at: string
           fbc: string | null
@@ -780,8 +841,13 @@ export type Database = {
           fbp: string | null
           id: string
           ip_hash: string | null
+          landing_page_id: string | null
+          lead_at: string | null
           link_id: string | null
+          meta_lead_error: string | null
+          meta_lead_status: string | null
           ref_code: string
+          session_id: string | null
           source: string
           state: string | null
           ttclid: string | null
@@ -922,6 +988,26 @@ export type Database = {
       }
       lp_bump: { Args: { p_id: string; p_lead: boolean }; Returns: undefined }
       my_seller_id: { Args: never; Returns: string }
+      record_landing_lead: {
+        Args: { p_ref: string; p_slug: string }
+        Returns: Json
+      }
+      record_landing_view: {
+        Args: {
+          p_allowed: boolean
+          p_choice: string
+          p_country: string
+          p_fbc: string
+          p_fbclid: string
+          p_fbp: string
+          p_ip_hash: string
+          p_ref: string
+          p_session: string
+          p_slug: string
+          p_ua: string
+        }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "seller"
@@ -931,6 +1017,7 @@ export type Database = {
         | "pix_generated"
         | "paid"
         | "renewed"
+        | "whatsapp_clicked"
       order_status:
         | "pending"
         | "paid"
@@ -1072,6 +1159,7 @@ export const Constants = {
         "pix_generated",
         "paid",
         "renewed",
+        "whatsapp_clicked",
       ],
       order_status: [
         "pending",

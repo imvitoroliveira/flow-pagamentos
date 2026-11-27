@@ -110,20 +110,16 @@ export function buildLeadEvent(i: LeadInput) {
   };
 }
 
-/** Sends one Lead to the Conversions API. Never throws; returns whether Meta accepted it. */
-export async function sendMetaLead(pixelId: string, token: string, input: LeadInput, testCode?: string | null): Promise<boolean> {
-  const body: Record<string, unknown> = { data: [buildLeadEvent(input)] };
-  if (testCode) body["test_event_code"] = testCode;
+/** Receipt is confirmed by events_received, not merely HTTP 200. Errors never contain token or raw payload. */
+export async function sendMetaLead(pixelId: string, token: string, input: LeadInput, testCode?: string | null): Promise<{ok:boolean;error:string|null}> {
+  const body: Record<string, unknown> = {data:[buildLeadEvent(input)],partner_agent:"lovable"};
+  if(testCode) body["test_event_code"]=testCode;
   try {
-    const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok) console.error("[meta-capi] lead rejected", res.status, (await res.text().catch(() => "")).slice(0, 300));
-    return res.ok;
-  } catch (e) {
-    console.error("[meta-capi] lead request failed", (e as Error).message);
-    return false;
-  }
+    const res = await fetch(metaEventsUrl(pixelId), {method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${token}`},body:JSON.stringify(body),signal:AbortSignal.timeout(4000)});
+    const result = await res.json().catch(()=>null) as {events_received?:number;error?:{code?:number;error_subcode?:number}}|null;
+    const ok = res.ok && (result?.events_received ?? 0)>0;
+    return {ok,error:ok?null:`HTTP ${res.status}; código ${result?.error?.code ?? "—"}; detalhe ${result?.error?.error_subcode ?? "—"}`};
+  } catch { return {ok:false,error:"Tempo esgotado ou conexão indisponível"}; }
 }
 
 export type InitiateCheckoutInput = Omit<PurchaseInput, "paidAt"> & { planSlug: string; eventTime?: number };

@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageTitle } from "@/components/admin/coming-soon";
 import { Tone } from "@/components/admin/confirm";
 import { Pager, PAGE_SIZE, ListSkeleton } from "@/components/admin/list-controls";
+import { Button } from "@/components/ui/button";
+import { RefreshCw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -19,6 +21,7 @@ export const Route = createFileRoute("/_authenticated/admin/funil")({
 const STAGES = [
   { value: "all", label: "Todas" },
   { value: "pagina", label: "Página" },
+  { value: "whatsapp", label: "Clique no WhatsApp" },
   { value: "checkout", label: "Checkout" },
   { value: "pix", label: "PIX gerado" },
   { value: "abandonou", label: "Abandonou" },
@@ -32,6 +35,7 @@ type ToneValue = Parameters<typeof Tone>[0]["tone"];
 const STAGE_LABEL: Record<string, string> = Object.fromEntries(STAGES.map((s) => [s.value, s.label]));
 const STAGE_TONE: Record<string, ToneValue> = {
   pagina: "muted",
+  whatsapp: "info",
   checkout: "info",
   pix: "warn",
   abandonou: "bad",
@@ -39,7 +43,9 @@ const STAGE_TONE: Record<string, ToneValue> = {
   falha_renovacao: "bad",
 };
 const PATH_LABEL: Record<string, string> = {
-  clique: "Clique",
+  clique: "Visita rastreada",
+  landing: "Landing page",
+  whatsapp: "Clique no WhatsApp",
   pagina: "Página",
   checkout: "Checkout",
   pix: "PIX",
@@ -50,6 +56,9 @@ const PATH_LABEL: Record<string, string> = {
 type SessionRow = {
   session_id: string;
   started_at: string;
+  last_at: string;
+  meta_lead_status: string | null;
+  meta_lead_error: string | null;
   ref_code: string | null;
   stage: string;
   order_status: string | null;
@@ -82,6 +91,8 @@ function FunnelPage() {
   const sessions = useQuery({
     queryKey: ["funnel-sessions", f.from, f.to, f.campaign, f.seller, stage, query, page],
     placeholderData: keepPreviousData,
+    staleTime: 15000,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const args = {
         p_from: f.from,
@@ -103,7 +114,7 @@ function FunnelPage() {
 
   return (
     <div className="space-y-4">
-      <PageTitle title="Funil e sessões" subtitle="Jornada de cada visitante, da página ao pagamento" />
+      <div className="flex flex-wrap items-center justify-between gap-3"><PageTitle title="Funil e sessões" subtitle="Jornada de cada visitante, da página ao pagamento" /><Button variant="outline" onClick={()=>sessions.refetch()} disabled={sessions.isFetching}><RefreshCw className="size-4"/> Atualizar</Button></div>
 
       <div role="group" aria-label="Filtrar por etapa" className="flex flex-wrap gap-2">
         {STAGES.map((s) => {
@@ -155,7 +166,7 @@ function FunnelPage() {
                 <div className="min-w-0">
                   <p className="truncate font-medium">{row.visitor}</p>
                   <p className="text-xs text-muted-foreground">
-                    {dtSP(row.started_at)} · {row.campaign_name ?? "Sem campanha"}
+                    {dtSP(row.last_at ?? row.started_at)} · {row.campaign_name ?? "Sem campanha"}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -170,6 +181,7 @@ function FunnelPage() {
                   </li>
                 ))}
               </ol>
+              {row.meta_lead_status && <p className="mt-2 text-xs text-muted-foreground">Meta · {{sent:"Lead recebido",test:"Enviado em modo de teste",failed:"Falha no envio",blocked:"Não enviado por privacidade",pending:"Envio pendente",not_configured:"Integração não configurada"}[row.meta_lead_status] ?? row.meta_lead_status}{row.meta_lead_error ? ` · ${row.meta_lead_error}` : ""}</p>}
               {row.ref_code && <p className="mt-2 text-xs text-muted-foreground">Código {row.ref_code}</p>}
             </li>
           ))}

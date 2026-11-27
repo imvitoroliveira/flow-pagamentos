@@ -2,6 +2,7 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { buildInitiateCheckoutEvent, buildPurchaseEvent, checkoutEventId, metaEventsUrl, shouldReportToMeta } from "./meta-capi";
+import { clickPermission } from "./advertising.server";
 import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "./reconcile-policy";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
@@ -244,7 +245,7 @@ function formatSaoPaulo(date: Date) {
   return `${parts["day"]}/${parts["month"]}/${parts["year"]} ${parts["hour"]}:${parts["minute"]}`;
 }
 
-const escapeHtml = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c]!);
+const escapeHtml = (s: string) => s.replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" })[c] ?? c);
 
 export async function notifyAdminOfSale(orderId: string) {
   try {
@@ -322,25 +323,26 @@ export async function sendCheckoutEvent(orderId: string): Promise<string | null>
     const token = (await getSetting("META_CAPI_TOKEN")).value;
     const sb = await db();
     const { data: o } = await sb.from("orders")
-      .select("id, event_id, ref_code, campaign_id, amount_cents, customer_email, customer_phone, panel_username, plans(slug), campaigns(meta_pixel_id)")
+      .select("id, created_at, event_id, ref_code, campaign_id, amount_cents, customer_email, customer_phone, panel_username, plans(slug), campaigns(meta_pixel_id)")
       .eq("id", orderId).maybeSingle();
     const pixelId = o?.campaigns?.meta_pixel_id || (await getSetting("META_PIXEL_ID")).value;
     if (!o || !pixelId || !o.ref_code) return null;
     const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
-    if (!shouldReportToMeta(click, o)) return null;
+    const permission = await clickPermission(o.ref_code);
+    if (!permission.allowed || !shouldReportToMeta(click, o)) return null;
     if (!token) return pixelId;
     const { publicUrl } = await import("./site-url");
     const body: Record<string, unknown> = {
       data: [buildInitiateCheckoutEvent({
-        eventId: checkoutEventId(o.event_id ?? o.id), orderId: o.id, amountCents: o.amount_cents, planSlug: o.plans?.slug ?? "plano",
-        sourceUrl: publicUrl("/pagar"), email: o.customer_email, phone: o.customer_phone, panelUsername: o.panel_username,
+        eventTime: Math.floor(new Date(o.created_at).getTime()/1000), eventId: checkoutEventId(o.event_id ?? o.id), orderId: o.id, amountCents: o.amount_cents, planSlug: o.plans?.slug ?? "plano",
+        sourceUrl: publicUrl("/pagar"), email: permission.explicit ? o.customer_email : null, phone: permission.explicit ? o.customer_phone : null, panelUsername: permission.explicit ? o.panel_username : null,
         fbc: click?.fbc ?? null, fbp: click?.fbp ?? null, userAgent: click?.user_agent ?? null,
       })],
     };
     const testCode = (await getSetting("META_TEST_EVENT_CODE")).value;
     if (testCode) body["test_event_code"] = testCode;
-    const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
+    const res = await fetch(metaEventsUrl(pixelId), {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) console.error("[meta-capi] checkout rejected", res.status, (await res.text().catch(() => "")).slice(0, 300));
     return pixelId;
@@ -368,13 +370,14 @@ export async function sendConversionEvents(orderId: string) {
     const pixelId = o?.campaigns?.meta_pixel_id || (await getSetting("META_PIXEL_ID")).value;
     if (!o || !o.paid_at || !pixelId || !o.ref_code) return;
     const { data: click } = await sb.from("clicks").select("fbc, fbp, user_agent").eq("ref_code", o.ref_code).maybeSingle();
-    if (!shouldReportToMeta(click, o)) return;
+    const permission = await clickPermission(o.ref_code);
+    if (!permission.allowed || !shouldReportToMeta(click, o)) return;
 
     const { publicUrl } = await import("./site-url");
     const body: Record<string, unknown> = {
       data: [buildPurchaseEvent({
         eventId: o.event_id ?? o.id, orderId: o.id, paidAt: o.paid_at, amountCents: o.amount_cents, sourceUrl: publicUrl("/pagar"),
-        email: o.customer_email, phone: o.customer_phone, panelUsername: o.panel_username,
+        email: permission.explicit ? o.customer_email : null, phone: permission.explicit ? o.customer_phone : null, panelUsername: permission.explicit ? o.panel_username : null,
         fbc: click?.fbc ?? null, fbp: click?.fbp ?? null, userAgent: click?.user_agent ?? null,
       })],
     };
@@ -383,8 +386,8 @@ export async function sendConversionEvents(orderId: string) {
 
     let ok = false;
     try {
-      const res = await fetch(`${metaEventsUrl(pixelId)}?access_token=${encodeURIComponent(token)}`, {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      const res = await fetch(metaEventsUrl(pixelId), {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body),
         signal: AbortSignal.timeout(10_000),
       });
       ok = res.ok;
@@ -423,7 +426,8 @@ export async function reconcileRecentPayments() {
   ];
   let settled = 0, expired = 0;
   await mapLimit(rows, 5, async (o) => {
-    const res = await fetch(`${ABACATE_API_BASE}/v2/transparents/check?id=${encodeURIComponent(o.abacate_id!)}`, {
+    if(!o.abacate_id) return;
+    const res = await fetch(`${ABACATE_API_BASE}/v2/transparents/check?id=${encodeURIComponent(o.abacate_id)}`, {
       headers: { Authorization: `Bearer ${key}` },
     }).catch(() => null);
     if (!res?.ok) return;
