@@ -29,13 +29,16 @@ export async function getPublicLanding(slug: string): Promise<PublicLanding | nu
   };
 }
 
-export type RequestInfo = { ip: string | null; userAgent: string | null; cookies: Record<string, string>; allowed: boolean; explicit: boolean; choiceId: string | null; country: string | null };
+export type RequestInfo = { ip: string | null; userAgent: string | null; cookies: Record<string, string>; allowed: boolean; explicit: boolean; choiceId: string | null; country: string | null; region: string | null };
 
 export async function readRequestInfo(request: Request): Promise<RequestInfo> {
   const { advertisingPermission, requestCookies } = await import("./advertising.server");
   const permission = await advertisingPermission(request);
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
-  return { ...permission, cookies: permission.allowed ? requestCookies(request) : {}, ip: ip.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0,500) ?? null };
+  // Brazilian state (UF) from the hosting geo header; only kept for Brazilian visitors and valid 2-letter codes.
+  const rawRegion = (request.headers.get("cf-region-code") ?? "").trim().toUpperCase();
+  const region = permission.country === "BR" && /^[A-Z]{2}$/.test(rawRegion) ? rawRegion : null;
+  return { ...permission, region, cookies: permission.allowed ? requestCookies(request) : {}, ip: ip.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0,500) ?? null };
 }
 
 export async function registerView(slug: string, body: { sessionId: string; ref?: string | null | undefined; fbclid?: string | null | undefined }, info: RequestInfo): Promise<{ ref: string | null }> {
@@ -48,7 +51,11 @@ export async function registerView(slug: string, body: { sessionId: string; ref?
   const fbc = info.allowed ? info.cookies["_fbc"] ?? (fbclid ? `fb.1.${Date.now()}.${fbclid}` : null) : null;
   for(let i=0;i<4;i++) {
     const { data, error } = await sb.rpc("record_landing_view", {p_slug:slug,p_session:body.sessionId,p_ref:makeRefCode(),p_fbclid:fbclid,p_fbc:fbc,p_fbp:info.cookies["_fbp"]??null,p_ua:info.userAgent,p_ip_hash:info.ip?hashIp(info.ip):null,p_country:info.country,p_choice:info.choiceId,p_allowed:info.allowed});
-    if(!error) return { ref: typeof data === "string" ? data : null };
+    if(!error) {
+      const ref = typeof data === "string" ? data : null;
+      if (ref && info.region) await sb.from("clicks").update({ state: info.region }).eq("ref_code", ref).is("state", null);
+      return { ref };
+    }
     if(error.code!=="23505") { console.error("[lp-view] database",error.code,error.message); throw new Error("Falha ao registrar visita"); }
   }
   throw new Error("Falha ao gerar referência");
