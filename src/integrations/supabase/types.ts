@@ -771,6 +771,51 @@ export type Database = {
         }
         Relationships: []
       }
+      test_accounts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          domain: string | null
+          duration_minutes: number
+          expires_at: string
+          id: string
+          notes: string | null
+          panel_id: string | null
+          password: string
+          username: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          domain?: string | null
+          duration_minutes?: number
+          expires_at: string
+          id?: string
+          notes?: string | null
+          panel_id?: string | null
+          password: string
+          username: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          domain?: string | null
+          duration_minutes?: number
+          expires_at?: string
+          id?: string
+          notes?: string | null
+          panel_id?: string | null
+          password?: string
+          username?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

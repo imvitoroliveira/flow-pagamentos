@@ -134,6 +134,13 @@
       "when": 1795742698819,
       "tag": "0018_test_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1795813786251,
+      "tag": "0019_activate_test_accounts_history",
+      "breakpoints": true
     }
   ]
 }
