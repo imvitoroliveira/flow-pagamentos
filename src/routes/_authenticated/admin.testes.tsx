@@ -6,11 +6,10 @@ import { toast } from "sonner";
 import { Copy, Loader2, MessageCircle, PlusCircle, TimerReset } from "lucide-react";
 import { createTestFn, extendTestFn, listTestsFn, type TestRow } from "@/lib/tests.functions";
 import {
-  durationLabel, formatTestMessage, type CreatedTest, isTestActive, maskPhoneBR, testWhatsappUrl, UI_DURATIONS, DEFAULT_TEST_MINUTES,
+  durationLabel, formatTestMessage, type CreatedTest, isTestActive, maskPhoneBR, suggestUsername, testWhatsappUrl, UI_DURATIONS, DEFAULT_TEST_MINUTES,
 } from "@/lib/test-accounts";
 import { PUBLIC_SITE_URL } from "@/lib/site-url";
 import { PageTitle } from "@/components/admin/coming-soon";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -37,6 +36,9 @@ function TestesPage() {
   const [phone, setPhone] = useState("");
   const [minutes, setMinutes] = useState<number>(DEFAULT_TEST_MINUTES);
   const [custom, setCustom] = useState("");
+  const [userEdited, setUserEdited] = useState(false);
+  const suggested = suggestUsername(name);
+  const username = userEdited ? custom : suggested;
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<CreatedTest | null>(null);
   const [extending, setExtending] = useState<string | null>(null);
@@ -55,11 +57,11 @@ function TestesPage() {
     if (busy) return;
     setBusy(true);
     try {
-      const r = await create({ data: { durationMinutes: minutes, customerName: name || undefined, customerPhone: phone || undefined, customUsername: custom || undefined } });
+      const r = await create({ data: { durationMinutes: minutes, customerName: name || undefined, customerPhone: phone || undefined, customUsername: username.length >= 3 ? username : undefined } });
       if (!r.ok) { toast.error(r.error); return; }
       setDone(r.test);
       if (!r.test.saved) toast.warning("Teste criado no painel, mas não entrou no histórico. Copie os dados agora.");
-      setName(""); setPhone(""); setCustom("");
+      setName(""); setPhone(""); setCustom(""); setUserEdited(false);
       await qc.invalidateQueries({ queryKey: ["admin-tests"] });
     } catch { toast.error("Não foi possível gerar o teste. Tente novamente."); }
     finally { setBusy(false); }
@@ -106,18 +108,16 @@ function TestesPage() {
             </div>
           </fieldset>
 
-          <Accordion type="single" collapsible>
-            <AccordionItem value="adv" className="border-b-0">
-              <AccordionTrigger className="py-2 text-sm">Avançado</AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-1.5">
-                  <Label htmlFor="t-user">Usuário personalizado (opcional)</Label>
-                  <Input id="t-user" className="h-11 sm:max-w-sm" value={custom} maxLength={32} onChange={(e) => setCustom(e.target.value.replace(/[^A-Za-z0-9._-]/g, ""))} autoComplete="off" />
-                  <p className="text-xs text-muted-foreground">Vazio = o painel gera automaticamente (11 dígitos).</p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="t-user">Usuário do teste</Label>
+              {userEdited && suggested && custom !== suggested && (
+                <Button type="button" variant="link" className="h-auto p-0 text-xs" onClick={() => { setUserEdited(false); setCustom(""); }}>Restaurar sugestão</Button>
+              )}
+            </div>
+            <Input id="t-user" className="h-11 sm:max-w-sm" value={username} maxLength={32} placeholder="Preencha o nome para sugerir" onChange={(e) => { const v = e.target.value.replace(/[^A-Za-z0-9._-]/g, ""); setCustom(v); setUserEdited(v !== ""); }} autoComplete="off" />
+            <p className="text-xs text-muted-foreground">Sugerido pelo nome (primeiro + último sobrenome). Edite se quiser. Vazio = o painel gera automaticamente.</p>
+          </div>
 
           <Button type="submit" className="h-11 w-full sm:w-auto" disabled={busy}>
             {busy ? <Loader2 className="animate-spin" aria-hidden /> : <PlusCircle aria-hidden />} Gerar Teste Gratuito

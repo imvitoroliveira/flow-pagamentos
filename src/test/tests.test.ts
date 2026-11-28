@@ -89,3 +89,19 @@ describe("usuário personalizado, status e resposta do painel", () => {
     expect(parsePanelTestUser({ username: "x", password: "p", exp_date: "abc" })).toBeNull();
   });
 });
+
+import { suggestUsername } from "@/lib/test-accounts";
+describe("suggestUsername", () => {
+  it("primeiro + último sobrenome", () => {
+    expect(suggestUsername("Vitor Oliveira")).toBe("vitor.oliveira");
+    expect(suggestUsername("Vitor Hugo Oliveira")).toBe("vitor.oliveira");
+  });
+  it("remove acentos e preposições", () => {
+    expect(suggestUsername("João Peçanha")).toBe("joao.pecanha");
+    expect(suggestUsername("Maria Eduarda da Silva")).toBe("maria.silva");
+  });
+  it("nome simples e vazio", () => {
+    expect(suggestUsername("Lucas")).toBe("lucas");
+    expect(suggestUsername("  ")).toBe("");
+  });
+});

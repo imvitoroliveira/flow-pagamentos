@@ -22,6 +22,19 @@ export function durationLabel(minutes: number): string {
 /** Usuário personalizado: letras, números, ponto, traço e underline (3 a 32). */
 export const CUSTOM_USERNAME_RE = /^[A-Za-z0-9._-]{3,32}$/;
 
+const NAME_PARTICLES = new Set(["de", "da", "do", "das", "dos", "e"]);
+
+/** Usuário sugerido a partir do nome: "Vitor Hugo Oliveira" → "vitor.oliveira" (primeiro + último sobrenome). */
+export function suggestUsername(fullName: string): string {
+  const words = fullName
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/).filter((w) => w && !NAME_PARTICLES.has(w));
+  if (!words.length) return "";
+  const parts = words.length > 1 ? [words[0]!, words[words.length - 1]!] : [words[0]!];
+  return parts.join(".").slice(0, 32);
+}
+
 export type TestData = { username: string; password: string; domain: string; minutes: number; customerName?: string | null };
 
 /** Link de renovação com o usuário do teste já preenchido. */
