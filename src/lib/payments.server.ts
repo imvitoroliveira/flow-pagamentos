@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 import { z } from "zod";
 import { buildInitiateCheckoutEvent, buildPurchaseEvent, checkoutEventId, metaEventsUrl, shouldReportToMeta } from "./meta-capi";
 import { clickPermission } from "./advertising.server";
+import { getUfFromPhone } from "./metrics-helpers";
 import { CLOSED_RECHECK_WINDOW_MS, createThrottle, mapLimit, shouldRecheckClosedOrder } from "./reconcile-policy";
 
 // ─── AbacatePay API config ────────────────────────────────────────────────
@@ -83,6 +84,9 @@ export async function createPayment(input: CreatePaymentInput) {
     const { data: click } = await sb.from("clicks").select("campaign_id, campaigns(seller_id)").eq("ref_code", ref).maybeSingle();
     campaign_id = click?.campaign_id ?? null;
     seller_id = click?.campaigns?.seller_id ?? null;
+    // fallback: clique sem UF na entrada da rede recebe a UF do DDD informado no checkout
+    const uf = getUfFromPhone(input.customer_phone);
+    if (uf) { try { await sb.from("clicks").update({ state: uf }).eq("ref_code", ref).is("state", null); } catch { /* nunca bloqueia o pagamento */ } }
   }
 
   const event_id = crypto.randomUUID();

@@ -44,11 +44,23 @@ function isH3SwallowedErrorBody(body: string): boolean {
   }
 }
 
+/** Cloudflare puts geolocation in request.cf, not in headers: copy it to the headers the app reads. */
+function withGeoHeaders(request: Request): Request {
+  const cf = (request as unknown as { cf?: { regionCode?: string; country?: string; region?: string } }).cf;
+  if (!cf || (!cf.regionCode && !cf.country)) return request;
+  const headers = new Headers(request.headers);
+  if (!headers.get("cf-region-code") && cf.regionCode) headers.set("cf-region-code", cf.regionCode);
+  if (!headers.get("cf-ipcountry") && cf.country) headers.set("cf-ipcountry", cf.country);
+  const effective = new Request(request, { headers });
+  try { Object.defineProperty(effective, "cf", { value: cf, writable: false }); } catch { /* cf already present */ }
+  return effective;
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
       const handler = await getServerEntry();
-      const response = await handler.fetch(request, env, ctx);
+      const response = await handler.fetch(withGeoHeaders(request), env, ctx);
       return await normalizeCatastrophicSsrResponse(response);
     } catch (error) {
       console.error(error);

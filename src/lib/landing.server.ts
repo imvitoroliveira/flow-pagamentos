@@ -1,4 +1,5 @@
 // Server-only: public landing pages (read), visit tracking and Lead events (Meta CAPI). Service role, no browser access.
+import { requestCf, resolveUf } from "./geo";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { DEFAULT_BENEFITS, DEFAULT_FAQ, REF_RE, resolveWhatsapp, type Benefit, type FaqItem, type LandingPageRow, type PublicLanding } from "./landing";
 
@@ -36,9 +37,11 @@ export async function readRequestInfo(request: Request): Promise<RequestInfo> {
   const permission = await advertisingPermission(request);
   const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
   // Brazilian state (UF) from the hosting geo header; only kept for Brazilian visitors and valid 2-letter codes.
-  const rawRegion = (request.headers.get("cf-region-code") ?? "").trim().toUpperCase();
-  const region = permission.country === "BR" && /^[A-Z]{2}$/.test(rawRegion) ? rawRegion : null;
-  return { ...permission, region, cookies: permission.allowed ? requestCookies(request) : {}, ip: ip.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0,500) ?? null };
+  // (header first, then request.cf; unknown country is treated as Brazil, a known foreign country is not)
+  const cf = requestCf(request);
+  const country = permission.country ?? cf?.country ?? null;
+  const region = resolveUf(request.headers.get("cf-region-code"), cf, country);
+  return { ...permission, country, region, cookies: permission.allowed ? requestCookies(request) : {}, ip: ip.split(",")[0]?.trim() || null, userAgent: request.headers.get("user-agent")?.slice(0,500) ?? null };
 }
 
 export async function registerView(slug: string, body: { sessionId: string; ref?: string | null | undefined; fbclid?: string | null | undefined }, info: RequestInfo): Promise<{ ref: string | null }> {

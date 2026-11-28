@@ -8,6 +8,7 @@ export const Route = createFileRoute("/r/$slug")({
         const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
         const { makeRefCode, hashIp } = await import("@/lib/checkout.server");
         const { isLinkPreviewBot } = await import("@/lib/link-bots");
+        const { readUf } = await import("@/lib/geo");
         const url = new URL(request.url);
         const { data: c } = await db.from("campaigns").select("id, active, destination_whatsapp, prefilled_message").eq("slug", params.slug).maybeSingle();
         if (!c || c.active === false) return Response.redirect(new URL("/pagar", url).toString(), 302);
@@ -16,6 +17,8 @@ export const Route = createFileRoute("/r/$slug")({
           (request.headers.get("cookie") ?? "").split(";").map((p) => p.trim().split("=")).filter((p) => p[0]),
         );
         const fbclid = url.searchParams.get("fbclid");
+        // UF: cabeçalho ou request.cf (a Cloudflare não envia o cabeçalho por padrão)
+        const state = readUf(request);
         const ip = request.headers.get("cf-connecting-ip") ?? request.headers.get("x-forwarded-for") ?? "";
         const code = url.searchParams.get("l");
         let link_id: string | null = null;
@@ -37,7 +40,7 @@ export const Route = createFileRoute("/r/$slug")({
             ttclid: url.searchParams.get("ttclid"),
             user_agent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
             ip_hash: ip ? hashIp(ip) : null,
-            state: request.headers.get("cf-region-code") ?? null,
+            state,
           });
           if (!error) break;
           ref = makeRefCode();
